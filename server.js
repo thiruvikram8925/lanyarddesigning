@@ -32,7 +32,7 @@ const MYSQL_HOST = process.env.MYSQL_HOST || 'localhost';
 const MYSQL_USER = process.env.MYSQL_USER || 'root';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || '';
 const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'gotek';
-const MYSQL_PORT = process.env.MYSQL_PORT || 3306;
+const MYSQL_PORT = process.env.MYSQL_PORT || 3308; // Configured for XAMPP port 3308
 
 app.use(cors());
 app.use(express.json({ limit: '500mb' }));
@@ -164,6 +164,7 @@ async function ensureSchema() {
         branch varchar(255) DEFAULT NULL,
         assignedTo varchar(100) DEFAULT NULL,
         assignedToName varchar(255) DEFAULT NULL,
+        design_state LONGTEXT DEFAULT NULL,
         created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -239,7 +240,8 @@ async function ensureSchema() {
       { name: 'pdf_url', type: "varchar(500) DEFAULT NULL" },
       { name: 'assignedTo', type: "varchar(100) DEFAULT NULL" },
       { name: 'assignedToName', type: "varchar(255) DEFAULT NULL" },
-      { name: 'branch', type: "varchar(255) DEFAULT NULL" }
+      { name: 'branch', type: "varchar(255) DEFAULT NULL" },
+      { name: 'design_state', type: "LONGTEXT DEFAULT NULL" }
     ];
 
     for (const col of columns) {
@@ -267,6 +269,65 @@ async function ensureSchema() {
 
 // --- API ROUTES ---
 
+// Auth
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const user = users[0];
+    
+    // In a real app, use bcrypt to verify password
+    if (user && user.password === password) {
+      res.json({
+        id: user.id,
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organization: user.organization,
+        token: 'fake-jwt-token-for-dev-' + user.id,
+      });
+    } else {
+      res.status(401).json({ message: 'Invalid email or password' });
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const token = authHeader.split(' ')[1];
+    
+    // We used a fake token format: fake-jwt-token-for-dev-{userId}
+    const userId = token.replace('fake-jwt-token-for-dev-', '');
+    
+    const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = users[0];
+    
+    if (user) {
+      res.json({
+        id: user.id,
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organization: user.organization,
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    console.error('getMe error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Projects
 app.get('/api/projects', async (req, res) => {
   try {
@@ -274,6 +335,19 @@ app.get('/api/projects', async (req, res) => {
     res.json(projects);
   } catch (e) {
     console.error('Error in GET /api/projects:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/projects/:id', async (req, res) => {
+  try {
+    const [projects] = await pool.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
+    if (projects.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    res.json(projects[0]);
+  } catch (e) {
+    console.error('Error in GET /api/projects/:id:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -306,7 +380,7 @@ app.put('/api/projects/:id', async (req, res) => {
       'name', 'organization', 'status', 'template', 'total_records',
       'valid_records', 'invalid_records', 'missing_photos', 'color',
       'created_by', 'current_stage', 'completed_stages', 'pdf_url',
-      'assignedTo', 'assignedToName', 'branch'
+      'assignedTo', 'assignedToName', 'branch', 'design_state'
     ];
 
     const setClauses = [];
@@ -453,6 +527,51 @@ app.post('/api/records/bulk', async (req, res) => {
 });
 
 // Orders (Project Sessions)
+app.get('/api/orders', async (req, res) => {
+  try {
+    const [orders] = await pool.query(`
+      SELECT 
+        o.id,
+        o.projectId,
+        o.status,
+        o.created_at,
+        p.name AS project_name,
+        p.organization AS project_organization,
+        p.template AS project_template,
+        p.total_records AS studentCount,
+        u.name AS creator_name,
+        u.email AS creator_email
+      FROM orders o
+      LEFT JOIN projects p ON o.projectId = p.id
+      LEFT JOIN users u ON p.created_by = u.id
+      ORDER BY o.created_at DESC
+    `);
+    
+    res.json(orders.map(o => ({
+      _id: o.id,
+      id: o.id,
+      projectId: o.projectId,
+      status: o.status,
+      createdAt: o.created_at,
+      studentCount: o.studentCount || 0,
+      project: {
+        name: o.project_name || 'Unnamed Project',
+        organization: o.project_organization || 'Unknown Org'
+      },
+      creator: {
+        name: o.creator_name || 'System',
+        email: o.creator_email || 'N/A'
+      },
+      template: {
+        name: o.project_template || 'Default'
+      }
+    })));
+  } catch (e) {
+    console.error('Error in GET /api/orders:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/orders/:id', async (req, res) => {
   try {
     const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);

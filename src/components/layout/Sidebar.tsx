@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Users, FileText, Type, Upload, CheckCircle,
     Printer, Download, Clock, Settings, ChevronLeft, ChevronRight,
-    FolderOpen, CreditCard, Layers, ChevronDown, FileArchive, Image, FileSpreadsheet, Palette, FileEdit
+    FolderOpen, CreditCard, Layers, ChevronDown, FileArchive, Image, FileSpreadsheet, Palette, FileEdit, ShoppingCart, Ribbon
 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,9 @@ const navigation: NavGroup[] = [
         title: 'MAIN',
         items: [
             { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', allowedRoles: ALL_ROLES },
-            { label: 'Projects', icon: FolderOpen, path: '/projects', allowedRoles: ALL_ROLES }
+            { label: 'Projects', icon: FolderOpen, path: '/projects', allowedRoles: ALL_ROLES },
+            { label: 'Orders', icon: ShoppingCart, path: '/admin/orders', allowedRoles: ADMIN_ROLES },
+            { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ADMIN_ROLES }
         ]
     },
     {

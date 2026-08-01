@@ -28,6 +28,7 @@ const PrintLayout = lazy(() => import("./pages/PrintLayout"));
 const RequestTracking = lazy(() => import("./pages/RequestTracking"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Customizer = lazy(() => import("./pages/Customizer"));
+const LanyardDesigner = lazy(() => import("./pages/LanyardDesigner"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -87,6 +88,7 @@ const App = () => (
                     <Route path="/print-layout" element={<PrintLayout />} />
                     <Route path="/tracking" element={<RequestTracking />} />
                     <Route path="/customizer" element={<Customizer />} />
+                    <Route path="/lanyard-designer" element={<LanyardDesigner />} />
                     <Route path="/settings" element={<Settings />} />
                   </Route>
 

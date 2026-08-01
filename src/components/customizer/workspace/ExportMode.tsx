@@ -2,10 +2,13 @@ import React, { useRef, useState, useCallback } from 'react';
 import { useConfiguratorStore } from '../../../store/useConfiguratorStore';
 import IdCardPreview from '../IdCardPreview';
 import { Stage, Layer, Group, Rect } from 'react-konva';
-import { Download, Package2, Printer, CheckCircle2, ChevronLeft, ChevronRight, Play, Grid, Columns, Eye, X, FileCheck } from 'lucide-react';
+import { Download, Package2, Printer, CheckCircle2, ChevronLeft, ChevronRight, Play, Grid, Columns, Eye, X, FileCheck, Send } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
+import { useAuth } from '@/hooks/useAuth';
+import { orderService } from '@/services/dataService';
+import { toast } from 'sonner';
 
 const cardSizes: Record<string, { width: number; height: number }> = {
   '86x54': { width: 244, height: 153 },
@@ -15,9 +18,43 @@ const cardSizes: Record<string, { width: number; height: number }> = {
 };
 
 export default function ExportMode({ stageRef, idCardStageRef }: Record<string, unknown>) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'ultra-super-admin';
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
   const design = useConfiguratorStore(state => state.design);
   const setField = useConfiguratorStore(state => state.setField);
   const { datasetRecords, sampleRecordIndex, mapping } = design.idCard.bulkWorkflow;
+  
+  const handlePlaceOrder = async () => {
+    const projectId = design.idCard.selected;
+    if (!projectId) {
+      toast.error('No project selected');
+      return;
+    }
+    
+    setIsPlacingOrder(true);
+    try {
+      const orderId = `order-${projectId}`;
+      
+      // Try to create order. If it exists (fails due to duplicate key), update its status.
+      try {
+        await orderService.create({ 
+          id: orderId, 
+          projectId, 
+          status: 'submitted' 
+        });
+      } catch (err) {
+        await orderService.updateStatus(orderId, 'submitted');
+      }
+      toast.success('Order placed successfully! Submitted to Super Admin.');
+    } catch (error: any) {
+      console.error('Error placing order:', error);
+      toast.error(error.response?.data?.message || 'Failed to place order');
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
   const totalRecords = datasetRecords?.length || 0;
   const showBothSides = design.idCard.showBothSides;
   const hasBackTemplate = !!design.idCard.back.backgroundImage || design.idCard.back.elements.length > 0;
@@ -730,42 +767,69 @@ export default function ExportMode({ stageRef, idCardStageRef }: Record<string, 
             </div>
 
             <div className="mt-auto pt-6 border-t border-slate-100 flex flex-col gap-3">
-              <button 
-                onClick={() => setShowPreviewModal(true)}
-                className="w-full bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:bg-slate-200 hover:text-slate-900 transition-all font-bold text-sm"
-              >
-                <Eye size={16} /> Advanced Print Preview
-              </button>
-              <button 
-                onClick={() => handleExportBatch('grid')}
-                disabled={isExporting}
-                className="w-full bg-slate-900 border border-slate-800 text-white rounded-2xl py-4 px-5 flex items-center gap-4 hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
-              >
-              <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                 <Grid size={24} />
-              </div>
-              <div className="text-left flex-1 relative z-10">
-                <div className="font-bold text-lg leading-tight">Print PDF</div>
-                <div className="text-[11px] text-slate-300 font-medium uppercase tracking-wider mt-0.5">{dualSide ? 'Front + Back Sheets' : 'Multi-Card Grid'}</div>
-              </div>
-            </button>
-            <button 
-              onClick={handleProofing}
-              disabled={isExporting || isProofing}
-              className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
-            >
-              <FileCheck size={16} /> {isProofing ? 'Generating Proof...' : 'Proofing'}
-            </button>
-            <button 
-              onClick={() => handleExportBatch('zip')}
-              disabled={isExporting}
-              className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
-            >
-              <Package2 size={16} /> Image Archive (ZIP)
-            </button>
+              {!isSuperAdmin ? (
+                <>
+                  <button 
+                    onClick={handlePlaceOrder}
+                    disabled={isPlacingOrder}
+                    className="w-full bg-indigo-600 border border-indigo-500 text-white rounded-2xl py-4 px-5 flex items-center gap-4 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/20 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
+                  >
+                    <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                       <Send size={24} />
+                    </div>
+                    <div className="text-left flex-1 relative z-10">
+                      <div className="font-bold text-lg leading-tight">Place Order</div>
+                      <div className="text-[11px] text-indigo-200 font-medium uppercase tracking-wider mt-0.5">Submit to Super Admin</div>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={handleProofing}
+                    disabled={isExporting || isProofing}
+                    className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
+                  >
+                    <FileCheck size={16} /> {isProofing ? 'Generating Proof...' : 'Proofing'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setShowPreviewModal(true)}
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:bg-slate-200 hover:text-slate-900 transition-all font-bold text-sm"
+                  >
+                    <Eye size={16} /> Advanced Print Preview
+                  </button>
+                  <button 
+                    onClick={() => handleExportBatch('grid')}
+                    disabled={isExporting}
+                    className="w-full bg-slate-900 border border-slate-800 text-white rounded-2xl py-4 px-5 flex items-center gap-4 hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/20 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
+                  >
+                    <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                       <Grid size={24} />
+                    </div>
+                    <div className="text-left flex-1 relative z-10">
+                      <div className="font-bold text-lg leading-tight">Print PDF</div>
+                      <div className="text-[11px] text-slate-300 font-medium uppercase tracking-wider mt-0.5">{dualSide ? 'Front + Back Sheets' : 'Multi-Card Grid'}</div>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={handleProofing}
+                    disabled={isExporting || isProofing}
+                    className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
+                  >
+                    <FileCheck size={16} /> {isProofing ? 'Generating Proof...' : 'Proofing'}
+                  </button>
+                  <button 
+                    onClick={() => handleExportBatch('zip')}
+                    disabled={isExporting}
+                    className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl py-3 px-5 flex items-center justify-center gap-2 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm"
+                  >
+                    <Package2 size={16} /> Image Archive (ZIP)
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
     {(isExporting || isProofing) && (
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center animate-in fade-in">

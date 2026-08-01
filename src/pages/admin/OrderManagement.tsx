@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminHeader } from "@/components/AdminHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface OrderWithDetails {
 
 const OrderManagement = () => {
   const { user, isLoading: isLoadingAuth } = useRequireAuth("/admin/login");
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -271,7 +273,12 @@ const OrderManagement = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              toast.info('Order details view coming soon');
+                              const projectId = (order as any).projectId;
+                              if (projectId) {
+                                navigate(`/customizer?orderId=${projectId}`);
+                              } else {
+                                toast.error('No project associated with this order.');
+                              }
                             }}
                           >
                             <Eye className="w-4 h-4" />

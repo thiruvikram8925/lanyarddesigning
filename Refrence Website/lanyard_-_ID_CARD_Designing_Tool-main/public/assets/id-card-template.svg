@@ -1,0 +1,13 @@
+<svg width="180" height="258" viewBox="0 0 180 258" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cardGloss" x1="36" y1="10" x2="144" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="177" height="255" rx="17" stroke="white" stroke-opacity="0.16" stroke-width="3"/>
+  <path d="M20 16H160V102C141 118 117 127 92 127C66 127 41 118 20 102V16Z" fill="url(#cardGloss)"/>
+  <rect x="20" y="194" width="140" height="12" rx="6" fill="white" fill-opacity="0.1"/>
+  <rect x="20" y="214" width="98" height="10" rx="5" fill="white" fill-opacity="0.08"/>
+  <circle cx="150" cy="220" r="12" fill="white" fill-opacity="0.08"/>
+</svg>
