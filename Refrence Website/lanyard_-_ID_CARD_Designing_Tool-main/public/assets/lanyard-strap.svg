@@ -1,0 +1,23 @@
+<svg width="640" height="820" viewBox="0 0 640 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="strapShade" x1="122" y1="105" x2="307" y2="576" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="strapShadeRight" x1="518" y1="105" x2="333" y2="576" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.02"/>
+    </linearGradient>
+    <filter id="softBlur" x="84" y="57" width="472" height="554" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <g opacity="0.65" filter="url(#softBlur)">
+    <path d="M246 92C226 136 178 210 136 292C116 382 146 472 208 540C238 553 261 562 280 568" stroke="white" stroke-width="44" stroke-linecap="round"/>
+    <path d="M394 92C414 136 462 210 504 292C524 382 494 472 432 540C402 553 379 562 360 568" stroke="white" stroke-width="44" stroke-linecap="round"/>
+  </g>
+  <path d="M250 96C231 139 186 212 149 293C131 379 158 466 214 532C244 546 265 556 282 561" stroke="url(#strapShade)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M390 96C409 139 454 212 491 293C509 379 482 466 426 532C396 546 375 556 358 561" stroke="url(#strapShadeRight)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M242 108C219 149 176 221 141 297C124 377 151 463 206 528" stroke="white" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 10"/>
+  <path d="M398 108C421 149 464 221 499 297C516 377 489 463 434 528" stroke="white" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 10"/>
+</svg>

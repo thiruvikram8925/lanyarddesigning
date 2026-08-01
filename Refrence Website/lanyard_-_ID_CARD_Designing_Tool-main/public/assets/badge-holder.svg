@@ -1,0 +1,21 @@
+<svg width="232" height="322" viewBox="0 0 232 322" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="holderEdge" x1="16" y1="20" x2="210" y2="304" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.68"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.15"/>
+    </linearGradient>
+    <linearGradient id="holderGloss" x1="70" y1="14" x2="168" y2="292" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="holderShadow" x="0" y="0" width="232" height="322" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <g filter="url(#holderShadow)">
+    <path d="M72 12H160C166.627 12 172 17.3726 172 24V42C172 48.6274 166.627 54 160 54H72C65.3726 54 60 48.6274 60 42V24C60 17.3726 65.3726 12 72 12Z" fill="white" fill-opacity="0.18" stroke="url(#holderEdge)" stroke-width="3"/>
+    <rect x="18" y="44" width="196" height="256" rx="28" fill="white" fill-opacity="0.12" stroke="url(#holderEdge)" stroke-width="4"/>
+    <rect x="30" y="58" width="172" height="228" rx="18" fill="white" fill-opacity="0.03" stroke="white" stroke-opacity="0.28" stroke-width="2"/>
+    <path d="M44 72C60 62 90 55 120 55C148 55 177 61 190 72V274C176 286 145 292 117 292C87 292 56 286 44 274V72Z" fill="url(#holderGloss)"/>
+  </g>
+</svg>
