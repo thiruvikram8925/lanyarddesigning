@@ -162,6 +162,7 @@ async function ensureSchema() {
         completed_stages longtext,
         pdf_url varchar(500) DEFAULT NULL,
         branch varchar(255) DEFAULT NULL,
+        design_state longtext,
         assignedTo varchar(100) DEFAULT NULL,
         assignedToName varchar(255) DEFAULT NULL,
         created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -239,7 +240,8 @@ async function ensureSchema() {
       { name: 'pdf_url', type: "varchar(500) DEFAULT NULL" },
       { name: 'assignedTo', type: "varchar(100) DEFAULT NULL" },
       { name: 'assignedToName', type: "varchar(255) DEFAULT NULL" },
-      { name: 'branch', type: "varchar(255) DEFAULT NULL" }
+      { name: 'branch', type: "varchar(255) DEFAULT NULL" },
+      { name: 'design_state', type: "longtext" }
     ];
 
     for (const col of columns) {
@@ -306,7 +308,7 @@ app.put('/api/projects/:id', async (req, res) => {
       'name', 'organization', 'status', 'template', 'total_records',
       'valid_records', 'invalid_records', 'missing_photos', 'color',
       'created_by', 'current_stage', 'completed_stages', 'pdf_url',
-      'assignedTo', 'assignedToName', 'branch'
+      'assignedTo', 'assignedToName', 'branch', 'design_state'
     ];
 
     const setClauses = [];
