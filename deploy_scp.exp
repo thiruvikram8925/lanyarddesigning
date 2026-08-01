@@ -1,0 +1,6 @@
+#!/usr/bin/expect -f
+set timeout 180
+spawn scp -P 65002 -o StrictHostKeyChecking=no -r dist/. u856184323@82.25.120.218:domains/gotekoffice.com/public_html/
+expect "*assword:*"
+send "Eash@2005\r"
+expect eof

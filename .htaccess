@@ -1,0 +1,76 @@
+# --- GOTEK ID Card System - Apache/Hostinger Configuration ---
+
+# ==============================
+# PHP Upload & Execution Limits
+# ==============================
+php_value upload_max_filesize 10240M
+php_value post_max_size 10500M
+php_value max_execution_time 3600
+php_value max_input_time 3600
+php_value memory_limit 512M
+php_value max_file_uploads 20
+
+# ==============================
+# Apache Timeout Configuration
+# ==============================
+<IfModule mod_reqtimeout.c>
+    RequestReadTimeout header=120 body=600
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Connection keep-alive
+</IfModule>
+
+# ==============================
+# Pass Authorization Header to PHP
+# ==============================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Pass Authorization header through to PHP
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Route ALL /api/* requests to api.php (preserving full path for routing)
+    RewriteRule ^api/(.*)$ api.php [QSA,L]
+
+    # Don't rewrite upload file routes
+    RewriteRule ^uploads/ - [L]
+
+    # Don't rewrite existing files or directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Send everything else to index.html (SPA)
+    RewriteRule . /index.html [L]
+</IfModule>
+
+# ==============================
+# CORS Headers
+# ==============================
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+</IfModule>
+
+# ==============================
+# Security
+# ==============================
+<FilesMatch "\.(env|sql|sh|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# ==============================
+# Prevent Caching of index.html
+# ==============================
+<FilesMatch "^index\.html$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </IfModule>
+</FilesMatch>
