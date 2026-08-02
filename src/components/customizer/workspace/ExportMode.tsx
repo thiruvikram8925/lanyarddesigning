@@ -17,7 +17,7 @@ const cardSizes: Record<string, { width: number; height: number }> = {
   '70x100': { width: 198, height: 283 },
 };
 
-export default function ExportMode({ stageRef, idCardStageRef }: Record<string, unknown>) {
+export default function ExportMode({ stageRef, idCardStageRef, hidePreview = false }: { stageRef?: any, idCardStageRef?: any, hidePreview?: boolean }) {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'ultra-super-admin';
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -571,9 +571,9 @@ export default function ExportMode({ stageRef, idCardStageRef }: Record<string, 
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 relative">
-      <div className="flex-1 flex overflow-hidden">
+      <div className={`flex-1 flex overflow-hidden ${hidePreview ? 'rounded-2xl border border-slate-200' : ''}`}>
         {/* Review Area */}
-        <div className="flex-1 p-10 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className={`flex-1 p-10 flex flex-col items-center justify-center relative overflow-hidden ${hidePreview ? 'absolute opacity-0 pointer-events-none -z-10' : ''}`}>
           <div className="bg-white rounded-[40px] shadow-2xl border border-slate-100 p-8 flex flex-col items-center">
             <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">Final Review</h3>
             <p className="text-slate-500 text-sm font-medium mb-6 text-center max-w-sm">Use the Data Scrubber to preview the generated ID cards before exporting.</p>
@@ -696,7 +696,7 @@ export default function ExportMode({ stageRef, idCardStageRef }: Record<string, 
         </div>
 
         {/* Export Panel */}
-        <div className="w-80 bg-white border-l border-slate-200 shadow-xl flex flex-col relative z-20">
+        <div className={`bg-white shadow-xl flex flex-col relative z-20 ${hidePreview ? 'w-full' : 'w-80 border-l border-slate-200'}`}>
           <div className="p-6 border-b border-slate-100 bg-indigo-50/30">
             <h2 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2"><CheckCircle2 size={24} className="text-emerald-500"/> Ready to Export</h2>
             <p className="text-slate-500 text-sm mt-2 font-medium">Your design has been mapped to {totalRecords} records{dualSide ? ' (Front + Back)' : ''} flawlessly.</p>

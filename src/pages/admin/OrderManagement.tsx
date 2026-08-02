@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { orderService } from "@/services/dataService";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, MoreHorizontal, LucideIcon } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, MoreHorizontal, LucideIcon, ArrowLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface OrderWithDetails {
@@ -170,6 +170,11 @@ const OrderManagement = () => {
       <AdminHeader />
       
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-4">
+          <Button variant="ghost" onClick={() => navigate("/admin/dashboard")}>
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+          </Button>
+        </div>
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-2xl">Order Management</CardTitle>
@@ -236,6 +241,9 @@ const OrderManagement = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Order ID</TableHead>
+                    <TableHead>Project Name</TableHead>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Template</TableHead>
                     <TableHead>Students</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
@@ -244,10 +252,32 @@ const OrderManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredOrders.map((order) => (
-                    <TableRow key={order._id}>
+                    <TableRow 
+                      key={order._id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/admin/orders/${order._id || (order as any).id}`)}
+                    >
                       <TableCell>
                         <div className="font-mono text-sm">
                           {order._id.slice(0, 8)}...
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="text-sm font-medium">
+                          {(order.project as any)?.name || "Unnamed"}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="text-sm">
+                          {(order.project as any)?.organization || "Unknown"}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="text-sm">
+                          {(order.template as any)?.name || "Default"}
                         </div>
                       </TableCell>
                       
