@@ -104,6 +104,7 @@ export interface Design {
   gridSize: number;
   showGrid: boolean;
   snapToGrid: boolean;
+  selectedLanyardElement: 'text' | 'logo' | null;
   logoOffset: number;
   logoOffsetLeft: number;
   logoOffsetCenter: number;
@@ -206,6 +207,7 @@ const defaultDesign: Design = {
   gridSize: 20,
   showGrid: true,
   snapToGrid: true,
+  selectedLanyardElement: null,
   logoOffset: 0,
   logoOffsetLeft: 0,
   logoOffsetCenter: 0,
