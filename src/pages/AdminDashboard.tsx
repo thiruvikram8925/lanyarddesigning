@@ -3,7 +3,7 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { School, Package, Layout, AlertCircle, Users, TrendingUp, Clock, CheckCircle, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
-import { dashboardService, schoolService, orderService, studentService, templateService } from "@/services/dataService";
+import { dashboardService, schoolService, orderService, studentService, templateService, projectService } from "@/services/dataService";
 import { toast } from "sonner";
 
 interface DashboardStats {
@@ -24,6 +24,10 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
   const { user, isLoading } = useRequireAuth("/");
+  const isUltraAdmin = user?.role === 'ultra-super-admin';
+  const isSuperAdmin = user?.role === 'super-admin';
+  const isSubAdmin = user?.role === 'admin';
+  
   const [stats, setStats] = useState<DashboardStats>({
     totalSchools: 0,
     totalOrders: 0,
@@ -57,10 +61,6 @@ const AdminDashboard = () => {
         const templatesList = Array.isArray(templates) ? templates : (templates?.templates || []);
 
         // --- Role-Based Filtering ---
-        const isUltraAdmin = user?.role === 'ultra-super-admin';
-        const isSuperAdmin = user?.role === 'super-admin';
-        const isSubAdmin = user?.role === 'admin';
-
         let authorizedProjects = projects;
         if (isSubAdmin) {
           // Sub-admins only see stats for projects assigned to them

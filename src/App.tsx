@@ -35,6 +35,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const SchoolManagement = lazy(() => import("./pages/admin/SchoolManagement"));
 const OrderManagement = lazy(() => import("./pages/admin/OrderManagement"));
+const OrderDetails = lazy(() => import("./pages/admin/OrderDetails"));
 const AdvertisementManagement = lazy(() => import("./pages/admin/AdvertisementManagement"));
 const AdminTemplateLibrary = lazy(() => import("./pages/admin/TemplateLibrary"));
 
@@ -96,6 +97,7 @@ const App = () => (
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/schools" element={<SchoolManagement />} />
                   <Route path="/admin/orders" element={<OrderManagement />} />
+                  <Route path="/admin/orders/:id" element={<OrderDetails />} />
                   <Route path="/admin/advertisements" element={<AdvertisementManagement />} />
                   <Route path="/admin/templates" element={<AdminTemplateLibrary />} />
                   
