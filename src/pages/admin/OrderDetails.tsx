@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { useConfiguratorStore } from "@/store/useConfiguratorStore";
 import ExportMode from "@/components/customizer/workspace/ExportMode";
+import LanyardStage from "@/components/customizer/LanyardStage";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   draft: { label: "Draft", color: "bg-gray-500", icon: Clock },
@@ -27,6 +28,8 @@ const OrderDetails = () => {
   const [project, setProject] = useState<any>(null);
   const [design, setDesign] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [previewTab, setPreviewTab] = useState<"2d" | "flat">("2d");
+  const [stageKey, setStageKey] = useState(0);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -239,6 +242,66 @@ const OrderDetails = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Typography Details */}
+                  <div className="border-t pt-3.5">
+                    <span className="text-xs text-muted-foreground block mb-2 font-bold uppercase tracking-wider text-indigo-700">Typography Settings</span>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Font Family</span>
+                        <span className="font-semibold">{design.fontFamily || "Montserrat"}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Font Size</span>
+                        <span className="font-semibold">{design.fontSize || 18}px</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Letter Spacing</span>
+                        <span className="font-semibold">{design.textSpacing || 0}px</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Text Angle</span>
+                        <span className="font-semibold">{design.textAngle || 0}°</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Font Color</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div 
+                            className="w-3 h-3 rounded-full border" 
+                            style={{ backgroundColor: design.fontColor || "#fff" }} 
+                          />
+                          <span className="font-mono text-xs">{design.fontColor || "#ffffff"}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Copy Mode</span>
+                        <span className="font-semibold capitalize">{design.copyMode || "synchronized"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Asset & Pattern Details */}
+                  <div className="border-t pt-3.5">
+                    <span className="text-xs text-muted-foreground block mb-2 font-bold uppercase tracking-wider text-indigo-700">Pattern & Logo Effects</span>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Pattern ID</span>
+                        <span className="font-semibold">{design.strapPattern || "None"}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Pattern Opacity</span>
+                        <span className="font-semibold">{Math.round((design.strapPatternOpacity ?? 0.85) * 100)}%</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Logo Repeat</span>
+                        <span className="font-semibold">{design.logoRepeat ? "Repeated" : "Single"}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground block">Logo Scale</span>
+                        <span className="font-semibold">{Math.round((design.logoScale ?? 1) * 100)}%</span>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -280,6 +343,56 @@ const OrderDetails = () => {
                       <span className="text-[10px] text-muted-foreground uppercase font-bold block">Secondary Text</span>
                       <span className="text-sm font-semibold">{design.customTextSecondary || "—"}</span>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lanyard Design Viewer */}
+            {design && (
+              <Card className="shadow-md overflow-hidden">
+                <CardHeader className="bg-muted/40 pb-3 flex flex-row items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-indigo-600" />
+                      Lanyard Design Viewer
+                    </CardTitle>
+                    <CardDescription>Interactive 2D preview and print layouts</CardDescription>
+                  </div>
+                  {/* Tab Selector */}
+                  <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      onClick={() => setPreviewTab("2d")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        previewTab === "2d" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      2D View
+                    </button>
+                    <button
+                      onClick={() => setPreviewTab("flat")}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        previewTab === "flat" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Flat Layout
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 relative bg-slate-50 border-t flex flex-col justify-center items-center h-[520px]">
+                  {/* Informational tip banner */}
+                  <div className="absolute top-3 left-3 right-3 z-10 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-md text-[10px] text-indigo-700 flex justify-between items-center shadow-sm">
+                    <span>💡 Scroll to Zoom · Drag with Middle-Click to Pan</span>
+                    <button 
+                      onClick={() => setStageKey(prev => prev + 1)} 
+                      className="text-[10px] font-extrabold hover:underline"
+                    >
+                      Reset View
+                    </button>
+                  </div>
+                  
+                  <div className="w-full h-full flex items-center justify-center relative overflow-hidden bg-white">
+                    <LanyardStage key={stageKey} isFlatMode={previewTab === "flat"} currentStep={1} zoom={1} />
                   </div>
                 </CardContent>
               </Card>

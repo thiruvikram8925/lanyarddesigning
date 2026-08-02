@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { orderService } from '../services/dataService';
+import { orderService, projectService } from '../services/dataService';
 import { toast } from 'sonner';
 
 // Left sidebar panels
@@ -59,6 +59,19 @@ export default function LanyardDesigner() {
       if (!projectId) {
         projectId = `lanyard-${Date.now()}`;
         setField('idCard.selected', projectId);
+      }
+
+      // Check if project exists in database, otherwise create it first
+      try {
+        await projectService.getById(projectId);
+      } catch (err) {
+        await projectService.create({
+          id: projectId,
+          name: design.customTextLeft || design.customTextCenter || 'Lanyard Project',
+          organization: user?.organization || 'Unknown Org',
+          status: 'draft',
+          template: 'Lanyard',
+        });
       }
 
       await saveLocal(projectId);
@@ -178,7 +191,7 @@ export default function LanyardDesigner() {
           <button
             onClick={handlePlaceOrder}
             disabled={isPlacingOrder}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-[0.97] disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-extrabold rounded-lg shadow-md hover:shadow-lg transition-all active:scale-[0.97] disabled:opacity-50 border border-emerald-400"
           >
             {isPlacingOrder ? (
               <>

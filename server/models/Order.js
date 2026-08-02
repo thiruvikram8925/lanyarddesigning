@@ -20,7 +20,7 @@ const orderSchema = new mongoose.Schema({
     // Lifecycle
     status: {
         type: String,
-        enum: ['draft', 'uploaded', 'validated', 'approved', 'generating', 'generated', 'exported', 'archived'],
+        enum: ['draft', 'submitted', 'uploaded', 'validated', 'approved', 'generating', 'generated', 'exported', 'archived'],
         default: 'draft'
     },
 
