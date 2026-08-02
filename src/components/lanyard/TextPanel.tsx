@@ -28,6 +28,10 @@ export default function TextPanel() {
     const finalVal = isUppercase ? val.toUpperCase() : val;
     if (activeBox === 0) {
       setField('customTextLeft', finalVal);
+      if (design.copyMode === 'synchronized') {
+        setField('customTextCenter', finalVal);
+        setField('customTextRight', finalVal);
+      }
     } else {
       const updated = [...extraBoxes];
       updated[activeBox - 1] = { ...updated[activeBox - 1], value: finalVal };

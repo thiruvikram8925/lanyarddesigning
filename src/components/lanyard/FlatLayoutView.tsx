@@ -1,5 +1,6 @@
 import { useConfiguratorStore } from '../../store/useConfiguratorStore';
 import { presetColors } from '../../data/options';
+import LanyardStage from '../customizer/LanyardStage';
 
 function isGrad(c: unknown) { return typeof c === 'string' && (c as string).includes('gradient'); }
 
@@ -64,84 +65,18 @@ export default function FlatLayoutView() {
       </div>
 
       {/* Flat Straps */}
-      <div className="flex-1 flex items-center justify-center gap-12 p-8">
-        {/* Front Strap */}
-        <div className="flex flex-col items-center">
-          <div
-            className="relative rounded-lg shadow-lg overflow-hidden"
-            style={{
-              width: 90,
-              height: 420,
-              ...strapStyle,
-            }}
-          >
-            {/* Dashed selection overlay */}
-            <div className="absolute inset-2 border-2 border-dashed border-white/40 rounded pointer-events-none" />
-            
-            {/* Stitching edges */}
-            <div className="absolute inset-0 border-l-2 border-r-2 border-white/10 pointer-events-none" />
-
-            {/* Text */}
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-            >
-              <span
-                className="font-bold whitespace-nowrap overflow-hidden"
-                style={{
-                  color: textColor,
-                  fontSize: `${fontSize}px`,
-                  fontFamily: design.fontFamily || 'Montserrat',
-                  letterSpacing: `${design.textAngle || 0}px`,
-                  transform: 'rotate(180deg)',
-                  maxHeight: '400px',
-                }}
-              >
-                {repeatedText}
-              </span>
-            </div>
-          </div>
-          <div className="mt-3 text-center">
+      <div className="flex-1 flex items-center justify-center p-8 relative">
+        <LanyardStage isFlatMode={true} currentStep={2} />
+        
+        {/* Labels Overlay */}
+        <div className="absolute inset-x-0 bottom-12 flex justify-center gap-16 pointer-events-none">
+          <div className="text-center w-[90px] -translate-x-[45px]">
             <p className="text-xs font-bold text-slate-700">FRONT</p>
-            <p className="text-[10px] text-slate-400">Design transparency</p>
+            <p className="text-[10px] text-slate-400">Left Strap</p>
           </div>
-        </div>
-
-        {/* Back Strap */}
-        <div className="flex flex-col items-center">
-          <div
-            className="relative rounded-lg shadow-lg overflow-hidden"
-            style={{
-              width: 90,
-              height: 420,
-              ...strapStyle,
-            }}
-          >
-            {/* Stitching edges */}
-            <div className="absolute inset-0 border-l-2 border-r-2 border-white/10 pointer-events-none" />
-
-            {/* Text (mirrored) */}
-            <div
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-            >
-              <span
-                className="font-bold whitespace-nowrap overflow-hidden"
-                style={{
-                  color: textColor,
-                  fontSize: `${fontSize}px`,
-                  fontFamily: design.fontFamily || 'Montserrat',
-                  letterSpacing: `${design.textAngle || 0}px`,
-                  maxHeight: '400px',
-                }}
-              >
-                {repeatedText}
-              </span>
-            </div>
-          </div>
-          <div className="mt-3 text-center">
+          <div className="text-center w-[90px] translate-x-[35px]">
             <p className="text-xs font-bold text-slate-700">BACK</p>
-            <p className="text-[10px] text-slate-400">Auto-mirrored</p>
+            <p className="text-[10px] text-slate-400">Right Strap</p>
           </div>
         </div>
       </div>

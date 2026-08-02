@@ -161,32 +161,7 @@ export default function TemplatesPanel() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="px-4 mb-3">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search saved templates..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
-        </div>
-      </div>
 
-      {/* Category Pills */}
-      <div className="px-4 mb-3 flex flex-wrap gap-1.5">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`px-3 py-1 text-[11px] font-semibold rounded-full transition-all ${activeCategory === cat ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
 
       {/* Template List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
