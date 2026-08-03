@@ -205,9 +205,10 @@ const Settings = () => {
     };
 
     const getRoleLabel = (role: string) => {
-        if (role === 'ultra-super-admin') return 'Ultra Super admin';
-        if (role === 'super-admin') return 'Super admin';
-        return role.replace('-', ' ');
+        if (role === 'ultra-super-admin') return 'Ultra Super Admin';
+        if (role === 'super-admin') return 'Admin';
+        if (role === 'admin') return 'User';
+        return 'Standard User';
     };
 
 
@@ -282,7 +283,7 @@ const Settings = () => {
                         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <div>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Access Level</p>
-                                <p className="text-sm font-bold text-blue-600 capitalize mt-0.5">{user?.role || 'user'}</p>
+                                <p className="text-sm font-bold text-blue-600 capitalize mt-0.5">{getRoleLabel(user?.role || 'user')}</p>
                             </div>
                             <ShieldCheck className="w-8 h-8 text-blue-200" />
                         </div>
@@ -370,8 +371,8 @@ const Settings = () => {
                                                         <SelectValue placeholder="Select role" />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
-                                                        {isUltraAdmin && <SelectItem value="super-admin">Super Admin</SelectItem>}
-                                                        <SelectItem value="admin">Admin (Editor)</SelectItem>
+                                                        {isUltraAdmin && <SelectItem value="super-admin">Admin</SelectItem>}
+                                                        <SelectItem value="admin">User (Editor)</SelectItem>
                                                         <SelectItem value="user">Standard User</SelectItem>
                                                     </SelectContent>
                                                 </Select>

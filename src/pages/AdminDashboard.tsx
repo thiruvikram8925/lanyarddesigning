@@ -218,7 +218,7 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-4xl font-bold text-red-600">{stats.totalSuperAdmins}</CardTitle>
-                      <CardDescription className="font-bold text-gray-500">Total Super Admin</CardDescription>
+                      <CardDescription className="font-bold text-gray-500">Total Admin</CardDescription>
                     </div>
                     <div className="p-3 bg-red-50 rounded-xl">
                       <Shield className="w-8 h-8 text-red-600" />
@@ -233,7 +233,7 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-4xl font-bold text-purple-600">{stats.totalAdmins}</CardTitle>
-                      <CardDescription className="font-bold text-gray-500">Admin</CardDescription>
+                      <CardDescription className="font-bold text-gray-500">User (Editor)</CardDescription>
                     </div>
                     <div className="p-3 bg-purple-50 rounded-xl">
                       <Shield className="w-8 h-8 text-purple-600" />
@@ -287,7 +287,7 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-3xl font-bold text-purple-600">{stats.totalAdmins}</CardTitle>
-                        <CardDescription className="font-medium text-gray-500">Total Admins</CardDescription>
+                        <CardDescription className="font-medium text-gray-500">Total Users</CardDescription>
                       </div>
                       <div className="p-3 bg-purple-50 rounded-xl">
                         <Shield className="w-6 h-6 text-purple-600" />

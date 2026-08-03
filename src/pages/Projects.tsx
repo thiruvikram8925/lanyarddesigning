@@ -592,7 +592,7 @@ const Projects = () => {
                                         </div>
                                     );
                                 })}
-                                {subAdmins.length === 0 && <p className="text-sm text-gray-500 text-center py-4 italic">No admins found.</p>}
+                                {subAdmins.length === 0 && <p className="text-sm text-gray-500 text-center py-4 italic">No users found.</p>}
                             </div>
                             <div className="mt-6"><button onClick={() => setIsAssignModalOpen(false)} className="w-full py-3 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors transition-all active:scale-95">Done</button></div>
                         </motion.div>

@@ -87,7 +87,7 @@ export default function LanyardDesigner() {
         await orderService.updateStatus(orderId, 'submitted');
       }
 
-      toast.success('Order placed successfully! Submitted to Super Admin.');
+      toast.success('Order placed successfully! Submitted to Admin.');
     } catch (error: any) {
       console.error('Error placing order:', error);
       toast.error(error.response?.data?.message || 'Failed to place order');

@@ -171,7 +171,7 @@ const TopBar = ({ sidebarCollapsed }: TopBarProps) => {
                         </div>
                         <div className="text-left hidden md:block">
                             <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
-                            <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('-', ' ') || ''}</p>
+                            <p className="text-xs text-gray-500 capitalize">{user?.role === 'super-admin' ? 'Admin' : user?.role === 'admin' ? 'User' : (user?.role?.replace('-', ' ') || '')}</p>
                         </div>
                     </button>
 

@@ -47,7 +47,7 @@ export default function ExportMode({ stageRef, idCardStageRef, hidePreview = fal
       } catch (err) {
         await orderService.updateStatus(orderId, 'submitted');
       }
-      toast.success('Order placed successfully! Submitted to Super Admin.');
+      toast.success('Order placed successfully! Submitted to Admin.');
     } catch (error: any) {
       console.error('Error placing order:', error);
       toast.error(error.response?.data?.message || 'Failed to place order');
@@ -779,7 +779,7 @@ export default function ExportMode({ stageRef, idCardStageRef, hidePreview = fal
                     </div>
                     <div className="text-left flex-1 relative z-10">
                       <div className="font-bold text-lg leading-tight">Place Order</div>
-                      <div className="text-[11px] text-indigo-200 font-medium uppercase tracking-wider mt-0.5">Submit to Super Admin</div>
+                      <div className="text-[11px] text-indigo-200 font-medium uppercase tracking-wider mt-0.5">Submit to Admin</div>
                     </div>
                   </button>
                   <button 
