@@ -255,11 +255,15 @@ const Projects = () => {
         if (isAdmin) {
             hasAccess = true;
         } else if (isSubAdmin) {
-            hasAccess = (p.assignedTo === user?.id || p.assignedTo === user?._id);
+            const createdBy = (p as any).created_by;
+            hasAccess = (p.assignedTo === user?.id || p.assignedTo === user?._id) || 
+                        (createdBy && (createdBy === user?.email || createdBy === user?.id || createdBy === user?._id));
         } else {
             const userOrg = (user?.organization || '').trim().toLowerCase();
             const projectOrg = (p.organization || '').trim().toLowerCase();
-            hasAccess = (userOrg === projectOrg);
+            const createdBy = (p as any).created_by;
+            hasAccess = (userOrg !== '' && userOrg === projectOrg) || 
+                        (createdBy && (createdBy === user?.email || createdBy === user?.id || createdBy === user?._id));
         }
 
         if (!hasAccess) return false;
@@ -291,11 +295,9 @@ const Projects = () => {
                         {isSubAdmin ? 'Projects assigned to you' : 'Manage your ID card projects.'}
                     </p>
                 </div>
-                {isAdmin && (
                     <button onClick={() => setIsNewProjectModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
                         <Plus className="w-4 h-4" /> New Project
                     </button>
-                )}
             </div>
 
 
@@ -499,7 +501,7 @@ const Projects = () => {
                                                             <UserPlus className="w-5 h-5" />
                                                         </button>
                                                     )}
-                                                    {isAdmin && (
+                                                    {(isAdmin || ((project as any).created_by && ((project as any).created_by === user?.email || (project as any).created_by === user?.id || (project as any).created_by === user?._id))) && (
                                                         <button onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); setIsDeleteModalOpen(true); }}
                                                             className="p-2.5 rounded-xl hover:bg-red-50 text-red-600 border border-red-100 transition-colors shadow-sm bg-white"
                                                             title="Delete Project">
