@@ -9,7 +9,8 @@ import {
   RefreshCw, 
   Sparkles, 
   Loader2,
-  ShieldCheck
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 import { projectService, studentService } from '@/services/dataService';
 import { useOrder } from '@/hooks/useOrder';
@@ -171,6 +172,20 @@ const Validation = () => {
                     await refreshOrder();
                 }}
             />
+
+            {/* Bottom-Right Next Button directing to Customizer Setup section */}
+            <div className="fixed bottom-6 right-6 z-50">
+                <button
+                    onClick={() => {
+                        const targetUrl = orderId ? `/customizer?orderId=${orderId}` : '/customizer';
+                        navigate(targetUrl);
+                    }}
+                    className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-2xl shadow-xl hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all group border border-indigo-500/30"
+                >
+                    <span>Next: Setup & Design</span>
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+            </div>
         </div>
     );
 };

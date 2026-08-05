@@ -25,7 +25,6 @@ const FontLibrary = lazy(() => import("./pages/FontLibrary"));
 const Validation = lazy(() => import("./pages/Validation"));
 const GenerateCards = lazy(() => import("./pages/GenerateCards"));
 const PrintLayout = lazy(() => import("./pages/PrintLayout"));
-const RequestTracking = lazy(() => import("./pages/RequestTracking"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Customizer = lazy(() => import("./pages/Customizer"));
 const LanyardDesigner = lazy(() => import("./pages/LanyardDesigner"));
@@ -87,7 +86,6 @@ const App = () => (
                     <Route path="/import/photos" element={<Navigate to="/validation" replace />} />
                     <Route path="/generate" element={<GenerateCards />} />
                     <Route path="/print-layout" element={<PrintLayout />} />
-                    <Route path="/tracking" element={<RequestTracking />} />
                     <Route path="/customizer" element={<Customizer />} />
                     <Route path="/lanyard-designer" element={<LanyardDesigner />} />
                     <Route path="/settings" element={<Settings />} />
