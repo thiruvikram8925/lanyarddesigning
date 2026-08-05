@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node --watch server.js",
+    "migrate": "node scripts/migrate.js",
     "start:all": "concurrently \"npm run dev\" \"npm run server\"",
     "start:force": "concurrently \"vite --force\" \"node server.js\""
   },
