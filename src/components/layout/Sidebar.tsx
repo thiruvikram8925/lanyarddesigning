@@ -43,12 +43,6 @@ const navigation: NavGroup[] = [
         ]
     },
     {
-        title: 'OPERATIONS',
-        items: [
-            { label: 'Request tracking', icon: Clock, path: '/tracking', allowedRoles: ADMIN_ROLES }
-        ]
-    },
-    {
         title: 'SYSTEM',
         items: [
             { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: ALL_ROLES }

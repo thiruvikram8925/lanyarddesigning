@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useConfiguratorStore } from '../store/useConfiguratorStore';
 import { loadBatchPhotosFromDB } from '../utils/batchImageStore';
-import { Cloud, CheckCircle2, LayoutTemplate, Database, Download, RotateCcw, Loader2, FolderOpen } from 'lucide-react';
+import { Cloud, CheckCircle2, LayoutTemplate, Database, Download, RotateCcw, Loader2, FolderOpen, ArrowRight, ArrowLeft, Eye } from 'lucide-react';
 import ToastContainer, { showToast } from '../components/customizer/Toast';
 import SetupMode from '../components/customizer/workspace/SetupMode';
 import DesignMode from '../components/customizer/workspace/DesignMode';
@@ -181,6 +181,29 @@ export default function Customizer() {
 
         {/* Floating Context Toolbar renders on top of everything if in design mode */}
         {mode === 'design' && <FloatingToolbar stageRef={stageRef} />}
+
+        {/* Bottom-Right Navigation Buttons */}
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+          {mode === 'setup' && (
+            <button
+              onClick={() => setField('idCard.bulkWorkflow.mode', 'design')}
+              className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-2xl shadow-xl hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all group border border-indigo-500/30"
+            >
+              <span>Next: Design Workspace</span>
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
+
+          {mode === 'design' && (
+            <button
+              onClick={() => setField('idCard.bulkWorkflow.mode', 'export')}
+              className="flex items-center gap-2.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-2xl shadow-xl hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all group border border-indigo-500/30"
+            >
+              <span>Next: Review & Export</span>
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
+        </div>
       </main>
 
       <ToastContainer />
