@@ -125,6 +125,10 @@ const Projects = () => {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+    const [editProjectName, setEditProjectName] = useState('');
+    const [isEditingProject, setIsEditingProject] = useState(false);
     
     const navigate = useNavigate();
     const { setOrder } = useOrder();
@@ -204,6 +208,34 @@ const Projects = () => {
             toast.error(msg);
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleEditProject = async () => {
+        if (!projectToEdit || !editProjectName.trim()) return;
+
+        try {
+            setIsEditingProject(true);
+            const projectId = projectToEdit.id || projectToEdit._id;
+            if (projectId) {
+                await projectService.update(projectId, { name: editProjectName.trim() });
+                setProjects(projects.map(p => {
+                    if (p.id === projectId || p._id === projectId) {
+                        return { ...p, name: editProjectName.trim() } as Project;
+                    }
+                    return p;
+                }));
+            }
+            setIsEditModalOpen(false);
+            setProjectToEdit(null);
+            setEditProjectName('');
+            toast.success('Project updated successfully');
+        } catch (error: unknown) {
+            console.error('Failed to update project:', error);
+            const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update project';
+            toast.error(msg);
+        } finally {
+            setIsEditingProject(false);
         }
     };
 
@@ -502,11 +534,18 @@ const Projects = () => {
                                                         </button>
                                                     )}
                                                     {(isAdmin || ((project as any).created_by && ((project as any).created_by === user?.email || (project as any).created_by === user?.id || (project as any).created_by === user?._id))) && (
-                                                        <button onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); setIsDeleteModalOpen(true); }}
-                                                            className="p-2.5 rounded-xl hover:bg-red-50 text-red-600 border border-red-100 transition-colors shadow-sm bg-white"
-                                                            title="Delete Project">
-                                                            <Trash2 className="w-5 h-5" />
-                                                        </button>
+                                                        <>
+                                                            <button onClick={(e) => { e.stopPropagation(); setProjectToEdit(project); setEditProjectName(project.name); setIsEditModalOpen(true); }}
+                                                                className="p-2.5 rounded-xl hover:bg-blue-50 text-blue-600 border border-blue-100 transition-colors shadow-sm bg-white"
+                                                                title="Edit Project">
+                                                                <Pencil className="w-5 h-5" />
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); setIsDeleteModalOpen(true); }}
+                                                                className="p-2.5 rounded-xl hover:bg-red-50 text-red-600 border border-red-100 transition-colors shadow-sm bg-white"
+                                                                title="Delete Project">
+                                                                <Trash2 className="w-5 h-5" />
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
@@ -616,6 +655,37 @@ const Projects = () => {
                                 <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
                                 <button onClick={handleDeleteProject} disabled={isDeleting} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                                     {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {isEditModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsEditModalOpen(false)} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 overflow-hidden">
+                            <div className="flex items-center gap-3 text-blue-600 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Pencil className="w-5 h-5" /></div>
+                                <h2 className="text-xl font-bold text-gray-900">Edit Project Name</h2>
+                            </div>
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Project Name</label>
+                                <input 
+                                    type="text" 
+                                    value={editProjectName} 
+                                    onChange={(e) => setEditProjectName(e.target.value)} 
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-sm font-medium"
+                                    placeholder="Enter new project name" 
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+                                <button onClick={handleEditProject} disabled={isEditingProject || !editProjectName.trim()} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                                    {isEditingProject ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Save
                                 </button>
                             </div>
                         </motion.div>
