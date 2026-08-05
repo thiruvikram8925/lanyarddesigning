@@ -258,6 +258,29 @@ async function ensureSchema() {
         } catch (e) { console.error(`Failed to add ${col.name}: ${e.message}`); }
       }
     }
+
+    const userColumns = [
+      { name: 'status', type: "varchar(50) DEFAULT 'Active'" },
+      { name: 'plan', type: "varchar(50) DEFAULT 'PREMIUM'" },
+      { name: 'access_level', type: "varchar(100) DEFAULT 'Full Access'" },
+      { name: 'trial_end_date', type: "varchar(100) DEFAULT NULL" },
+      { name: 'creator_id', type: "varchar(100) DEFAULT NULL" }
+    ];
+
+    for (const col of userColumns) {
+      const [rows] = await pool.query(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = ?`,
+        [currentDb, col.name]
+      );
+
+      if (rows.length === 0) {
+        console.log(`➕ Adding missing column: ${col.name} to users table`);
+        try {
+          await pool.query(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+        } catch (e) { console.error(`Failed to add ${col.name}: ${e.message}`); }
+      }
+    }
     
     await pool.query(`UPDATE projects SET completed_stages = '[]' WHERE completed_stages IS NULL OR completed_stages = ''`);
     

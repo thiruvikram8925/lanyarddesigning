@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useConfiguratorStore } from '../store/useConfiguratorStore';
 import { loadBatchPhotosFromDB } from '../utils/batchImageStore';
-import { Cloud, CheckCircle2, LayoutTemplate, Database, Download, RotateCcw, Loader2, FolderOpen, ArrowRight, ArrowLeft, Eye } from 'lucide-react';
+import { Cloud, CheckCircle2, LayoutTemplate, Database, Download, RotateCcw, Loader2, FolderOpen, ArrowRight, Square, Sparkles, FileEdit, Check } from 'lucide-react';
 import ToastContainer, { showToast } from '../components/customizer/Toast';
 import SetupMode from '../components/customizer/workspace/SetupMode';
 import DesignMode from '../components/customizer/workspace/DesignMode';
@@ -11,8 +11,10 @@ import FloatingToolbar from '../components/customizer/workspace/FloatingToolbar'
 import ProjectSelector from '../components/customizer/ProjectSelector';
 
 export default function Customizer() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const templateMode = searchParams.get('templateMode'); // 'with-template' | 'without-template' | null
+
   const design = useConfiguratorStore(state => state.design);
   const setField = useConfiguratorStore(state => state.setField);
   const saveLocal = useConfiguratorStore(state => state.saveLocal);
@@ -72,6 +74,37 @@ export default function Customizer() {
     }
   };
 
+  const selectTemplateMode = (selectedMode: 'with-template' | 'create-new-template') => {
+    const params = new URLSearchParams(searchParams);
+    params.set('templateMode', selectedMode);
+    setSearchParams(params);
+
+    // Auto-ensure a selected workspace project ID exists so ProjectSelector is not shown
+    if (!useConfiguratorStore.getState().design.idCard.selected) {
+      setField('idCard.selected', 'default-project');
+    }
+
+    if (selectedMode === 'create-new-template') {
+      // Jump directly to design workspace canvas
+      setField('idCard.bulkWorkflow.mode', 'design');
+    } else if (selectedMode === 'with-template') {
+      // Open setup page (Upload template, dataset, photos)
+      setField('idCard.bulkWorkflow.mode', 'setup');
+    }
+  };
+
+  // Ensure project selection when templateMode is active
+  useEffect(() => {
+    if (templateMode) {
+      if (!design.idCard.selected) {
+        setField('idCard.selected', 'default-project');
+      }
+      if (templateMode === 'create-new-template' && mode === 'setup') {
+        setField('idCard.bulkWorkflow.mode', 'design');
+      }
+    }
+  }, [templateMode, design.idCard.selected, mode, setField]);
+
   const steps = [
     { id: 'setup', label: 'Setup', icon: Database },
     { id: 'design', label: 'Design Workspace', icon: LayoutTemplate },
@@ -87,8 +120,135 @@ export default function Customizer() {
     );
   }
 
-  if (!design.idCard.selected) {
-    return <ProjectSelector />;
+  // 1. Initial Choice Screen: 2 Boxes (With Template & Create New Template)
+  if (!templateMode) {
+    return (
+      <div className="flex flex-col min-h-[calc(100vh-7rem)] bg-gradient-to-br from-slate-50 via-indigo-50/20 to-blue-50/30 items-center justify-center p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="max-w-4xl w-full text-center my-auto">
+          {/* Header Badge & Title */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-100/80 text-indigo-700 font-bold text-xs mb-4">
+            <Sparkles size={14} />
+            <span>ID Card Customizer Mode</span>
+          </div>
+
+          <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3">
+            How would you like to start?
+          </h1>
+          <p className="text-slate-600 font-medium text-base md:text-lg mb-10 max-w-xl mx-auto">
+            Select an option below to begin your ID card design:
+          </p>
+
+          {/* 2 Big Option Boxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {/* Box 1: With Template */}
+            <button
+              onClick={() => selectTemplateMode('with-template')}
+              className="group relative bg-white border-2 border-slate-200/90 hover:border-indigo-500 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1.5 flex flex-col justify-between overflow-hidden cursor-pointer"
+            >
+              <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all" />
+              
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-md shadow-indigo-100">
+                  <LayoutTemplate size={32} />
+                </div>
+
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700">
+                    Option 1
+                  </span>
+                </div>
+
+                <h2 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                  With Template
+                </h2>
+                <p className="text-sm text-slate-600 leading-relaxed font-medium mb-6">
+                  Upload a base design exported from Canva/Illustrator (JPG/WMF), along with ID dataset Excel & batch photos.
+                </p>
+
+                <ul className="space-y-2 mb-6 text-xs text-slate-600 font-medium">
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-indigo-600 flex-shrink-0" />
+                    <span>Upload Front & Back base designs</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-indigo-600 flex-shrink-0" />
+                    <span>Import Excel data & student photos</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-indigo-600 flex-shrink-0" />
+                    <span>Full guided setup workflow</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-sm font-extrabold text-indigo-600">
+                <span>Open Setup Page</span>
+                <div className="w-8 h-8 rounded-full bg-indigo-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all">
+                  <ArrowRight size={16} />
+                </div>
+              </div>
+            </button>
+
+            {/* Box 2: Create New Template */}
+            <button
+              onClick={() => selectTemplateMode('create-new-template')}
+              className="group relative bg-white border-2 border-slate-200/90 hover:border-emerald-500 rounded-3xl p-8 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1.5 flex flex-col justify-between overflow-hidden cursor-pointer"
+            >
+              <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+              
+              <div>
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-md shadow-emerald-100">
+                  <FileEdit size={32} />
+                </div>
+
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700">
+                    Option 2
+                  </span>
+                </div>
+
+                <h2 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors">
+                  Create New Template
+                </h2>
+                <p className="text-sm text-slate-600 leading-relaxed font-medium mb-6">
+                  Skip the setup page and jump straight into a new blank canvas workspace to build a custom card design.
+                </p>
+
+                <ul className="space-y-2 mb-6 text-xs text-slate-600 font-medium">
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-emerald-600 flex-shrink-0" />
+                    <span>Direct blank canvas workspace</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-emerald-600 flex-shrink-0" />
+                    <span>Add text, shapes, QR & barcodes manually</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check size={14} className="text-emerald-600 flex-shrink-0" />
+                    <span>Instant interactive design mode</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-sm font-extrabold text-emerald-600">
+                <span>Open New Canvas</span>
+                <div className="w-8 h-8 rounded-full bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition-all">
+                  <ArrowRight size={16} />
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!design.idCard.selected && !templateMode) {
+    return (
+      <div className="relative">
+        <ProjectSelector />
+      </div>
+    );
   }
 
   return (
@@ -128,6 +288,18 @@ export default function Customizer() {
               {saveMessage}
             </span>
           )}
+          <button
+            onClick={() => {
+              const params = new URLSearchParams(searchParams);
+              params.delete('templateMode');
+              setSearchParams(params);
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition-all shadow-xs cursor-pointer"
+            title="Switch between With Template and Create New Template"
+          >
+            <Sparkles size={14} className="text-indigo-600" />
+            <span>Switch Mode</span>
+          </button>
           <button
             onClick={() => setField('idCard.selected', null)}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100 transition-all shadow-sm active:scale-95"
