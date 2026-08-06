@@ -9,22 +9,25 @@ export const useCanvasImage = (url?: string | null) => {
       return;
     }
 
+    let isMounted = true;
     const img = new window.Image();
-    // Only set crossOrigin for http(s) URLs — NOT for blob: or data: URLs
-    // blob URLs are same-origin and setting crossOrigin breaks them
-    if (url.startsWith('http')) {
+    
+    // Only set crossOrigin for external http(s) URLs (not blob:, data:, or relative paths)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
       img.crossOrigin = 'anonymous';
     }
+    
     img.onload = () => {
-      setImage(img);
+      if (isMounted) setImage(img);
     };
     img.onerror = () => {
-      setImage(undefined);
-      if (!url.startsWith('data:image/svg+xml')) {
-        console.error(`[useCanvasImage] Failed to load: ${url.substring(0, 60)}`);
-      }
+      if (isMounted) setImage(undefined);
     };
     img.src = url;
+
+    return () => {
+      isMounted = false;
+    };
   }, [url]);
 
   return image;
