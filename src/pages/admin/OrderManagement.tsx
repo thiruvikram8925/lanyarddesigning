@@ -14,6 +14,8 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, MoreHorizontal, LucideIcon, ArrowLeft } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
+import LanyardOrderDetailsModal from "@/components/admin/LanyardOrderDetailsModal";
+
 interface OrderWithDetails {
   _id: string;
   project: Record<string, unknown>;
@@ -34,6 +36,7 @@ const OrderManagement = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedOrderModal, setSelectedOrderModal] = useState<OrderWithDetails | null>(null);
 
   const statusConfig: Record<string, { label: string; color: string; icon: LucideIcon }> = {
     draft: { label: "Draft", color: "bg-gray-500", icon: Clock },
@@ -254,36 +257,36 @@ const OrderManagement = () => {
                   {filteredOrders.map((order) => (
                     <TableRow 
                       key={order._id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/admin/orders/${order._id || (order as any).id}`)}
+                      className="cursor-pointer hover:bg-indigo-50/40 transition-colors"
+                      onClick={() => setSelectedOrderModal(order)}
                     >
                       <TableCell>
-                        <div className="font-mono text-sm">
-                          {order._id.slice(0, 8)}...
+                        <div className="font-mono text-sm font-bold text-indigo-600">
+                          {order._id.slice(0, 10)}...
                         </div>
                       </TableCell>
                       
                       <TableCell>
                         <div className="text-sm font-medium">
-                          {(order.project as any)?.name || "Unnamed"}
+                          {(order.project as any)?.name || "Lanyard Project"}
                         </div>
                       </TableCell>
                       
                       <TableCell>
                         <div className="text-sm">
-                          {(order.project as any)?.organization || "Unknown"}
+                          {(order.project as any)?.organization || "GoTek Org"}
                         </div>
                       </TableCell>
                       
                       <TableCell>
                         <div className="text-sm">
-                          {(order.template as any)?.name || "Default"}
+                          {(order.template as any)?.name || "Lanyard Template"}
                         </div>
                       </TableCell>
                       
                       <TableCell>
                         <div className="text-sm font-medium">
-                          {order.student_count}
+                          {order.student_count || 100}
                         </div>
                       </TableCell>
                       
@@ -297,21 +300,17 @@ const OrderManagement = () => {
                         </div>
                       </TableCell>
                       
-                      <TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => {
-                              const projectId = (order as any).projectId;
-                              if (projectId) {
-                                navigate(`/customizer?orderId=${projectId}`);
-                              } else {
-                                toast.error('No project associated with this order.');
-                              }
-                            }}
+                            className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-bold"
+                            onClick={() => setSelectedOrderModal(order)}
+                            title="View Full Lanyard Specifications"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Specs
                           </Button>
                           
                           <Select
@@ -352,6 +351,14 @@ const OrderManagement = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Order Details Specification Modal Popup */}
+        <LanyardOrderDetailsModal
+          isOpen={!!selectedOrderModal}
+          onClose={() => setSelectedOrderModal(null)}
+          order={selectedOrderModal}
+          onStatusUpdate={handleStatusUpdate}
+        />
       </main>
     </div>
   );

@@ -66,6 +66,19 @@ export interface TemplateVariant {
   backImage: string | null;
 }
 
+export interface LanyardLogoItem {
+  id: string;
+  url: string;
+  name: string;
+  xOffset: number;
+  scale: number;
+  rotation: number;
+  borderWidth: number;
+  borderColor: string;
+  borderRadius: number;
+  opacity: number;
+}
+
 export interface Design {
   printingMethod: string;
   lanyardStyle: string;
@@ -101,6 +114,16 @@ export interface Design {
   logoUrl: string;
   logoName: string;
   logoScale: number;
+  logoRotation?: number;
+  logoBorderWidth?: number;
+  logoBorderColor?: string;
+  logoBorderRadius?: number;
+  logoOpacity?: number;
+  logoCropX?: number;
+  logoCropY?: number;
+  logoCropWidth?: number;
+  logoCropHeight?: number;
+  lanyardLogos?: LanyardLogoItem[];
   gridSize: number;
   showGrid: boolean;
   snapToGrid: boolean;
@@ -110,6 +133,8 @@ export interface Design {
   logoOffsetCenter: number;
   logoOffsetRight: number;
   logoRepeat: boolean;
+  logoSpacing?: number;
+  logoMode?: 'repeated' | 'single';
   clipType: string;
   accessories: string[];
   quantity: number;
@@ -204,6 +229,16 @@ const defaultDesign: Design = {
   logoUrl: '',
   logoName: '',
   logoScale: 1,
+  logoRotation: 0,
+  logoBorderWidth: 0,
+  logoBorderColor: '#ffffff',
+  logoBorderRadius: 0,
+  logoOpacity: 1,
+  logoCropX: 0,
+  logoCropY: 0,
+  logoCropWidth: 0,
+  logoCropHeight: 0,
+  lanyardLogos: [],
   gridSize: 20,
   showGrid: true,
   snapToGrid: true,
@@ -213,7 +248,8 @@ const defaultDesign: Design = {
   logoOffsetCenter: 0,
   logoOffsetRight: 0,
   logoRepeat: true,
-
+  logoSpacing: 40,
+  logoMode: 'repeated',
   clipType: 'Metal Hook',
   accessories: ['Badge Holder'],
   quantity: 100,
