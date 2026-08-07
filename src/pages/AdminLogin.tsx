@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import logo from "@/assets/unicard-logo.png";
 import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { authService } from "@/services/authService";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -16,10 +17,7 @@ const AdminLogin = () => {
 
   useEffect(() => {
     if (user) {
-      // Check if user has admin role (stored in localStorage from login)
-      const storedUser = localStorage.getItem('gotek_user');
-      const userData = storedUser ? JSON.parse(storedUser) : null;
-      if (userData?.role === 'super-admin' || userData?.role === 'ultra-super-admin') {
+      if (user.role === 'super-admin' || user.role === 'ultra-super-admin') {
         navigate("/admin/dashboard");
       }
     }
@@ -36,18 +34,15 @@ const AdminLogin = () => {
     const { error } = await signIn(email, password);
     
     if (error) {
-      toast.error(error);
+      toast.error(error as string);
       setIsLoading(false);
       return;
     }
 
-    // Check admin role from stored user data
-    const storedUser = localStorage.getItem('gotek_user');
-    const userData = storedUser ? JSON.parse(storedUser) : null;
-    if (!userData || (userData.role !== 'super-admin' && userData.role !== 'ultra-super-admin')) {
+    const storedUser = authService.getStoredUser();
+    if (!storedUser || (storedUser.role !== 'super-admin' && storedUser.role !== 'ultra-super-admin')) {
       toast.error("Access denied. Admin privileges required.");
-      localStorage.removeItem('gotek_token');
-      localStorage.removeItem('gotek_user');
+      authService.logout();
       setIsLoading(false);
       return;
     }
@@ -85,7 +80,7 @@ const AdminLogin = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="admin@unicard.com"
+                  placeholder="admin@gotek.com"
                   required
                 />
               </div>
