@@ -9,8 +9,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import fs from 'fs/promises';
 import { existsSync, mkdirSync, createWriteStream } from 'fs';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_gotek_designing_tool_2026_dev_mode';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const BCRYPT_ROUNDS = 12;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,15 +32,32 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Max upload file size: 10 GB
-const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+const MAX_FILE_SIZE = (parseInt(process.env.MAX_FILE_SIZE_GB || '10', 10)) * 1024 * 1024 * 1024;
 
 // MySQL Configuration
 const MYSQL_HOST = process.env.MYSQL_HOST || 'localhost';
 const MYSQL_USER = process.env.MYSQL_USER || 'root';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || '';
 const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'gotek';
-const MYSQL_PORT = process.env.MYSQL_PORT || 3308; // Configured for XAMPP port 3308
+const MYSQL_PORT = process.env.MYSQL_PORT || 3308;
 
+// Rate Limiters
+const apiLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+  max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX || '10', 10),
+  skipSuccessfulRequests: true,
+  message: { message: 'Too many login attempts. Please wait 15 minutes.' },
+});
+
+app.use('/api/', apiLimiter);
 app.use(cors());
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
@@ -41,6 +65,45 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve frontend build files
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Audit Logging helper
+async function auditLog(actorId, actorEmail, action, targetId = null, detail = null, ip = null) {
+  if (!pool) return;
+  try {
+    await pool.query(
+      'INSERT INTO audit_logs (id, actor_id, actor_email, action, target_id, detail, ip) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [uuidv4(), actorId, actorEmail, action, targetId, detail ? JSON.stringify(detail) : null, ip]
+    );
+  } catch (e) {
+    console.error('Audit log error:', e.message);
+  }
+}
+
+// Authentication Middleware
+function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (e) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+}
+
+// Role Authorization Middleware
+function authorize(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    }
+    next();
+  };
+}
 
 // --- Increase request timeout for all routes (60 minutes for large uploads up to 10GB) ---
 app.use((req, res, next) => {
@@ -225,11 +288,25 @@ async function ensureSchema() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id varchar(100) NOT NULL,
+        actor_id varchar(100) DEFAULT NULL,
+        actor_email varchar(255) DEFAULT NULL,
+        action varchar(100) NOT NULL,
+        target_id varchar(100) DEFAULT NULL,
+        detail text DEFAULT NULL,
+        ip varchar(50) DEFAULT NULL,
+        created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     console.log('✅ Base tables verified/created.');
 
-    // 2. Seed Default Super Admin
+    // 2. Seed Default Super Admin with bcrypt hashed passwords
     const admins = [
-      { id: uuidv4(), name: 'Super Admin', email: 'admin@gotek.com', password: 'admin123', role: 'super-admin' },
+      { id: uuidv4(), name: 'Super Admin', email: process.env.SEED_ADMIN_EMAIL || 'admin@gotek.com', password: process.env.SEED_ADMIN_PASSWORD || 'admin123', role: 'super-admin' },
       { id: uuidv4(), name: 'IT Support', email: 'itsupport@technosprint.net', password: 'Poland@01', role: 'ultra-super-admin' }
     ];
 
@@ -237,9 +314,10 @@ async function ensureSchema() {
       const [check] = await pool.query('SELECT * FROM users WHERE email = ?', [admin.email]);
       if (check.length === 0) {
         console.log(`👤 Creating admin account: ${admin.email}...`);
+        const hashedPass = await bcrypt.hash(admin.password, BCRYPT_ROUNDS);
         await pool.query(
           'INSERT INTO users (id, name, email, password, role, organization) VALUES (?, ?, ?, ?, ?, ?)',
-          [admin.id, admin.name, admin.email, admin.password, admin.role, 'GOTEK']
+          [admin.id, admin.name, admin.email, hashedPass, admin.role, 'GOTEK']
         );
       }
     }
@@ -310,23 +388,48 @@ async function ensureSchema() {
 // --- API ROUTES ---
 
 // Auth
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     let user = null;
     if (pool) {
       try {
         const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
         user = users[0];
       } catch (e) {
-        console.warn('MySQL login query failed, using fallback store:', e.message);
+        console.warn('MySQL login query failed:', e.message);
       }
     }
+
     if (!user) {
-      user = MOCK_USERS.find(u => u.email.toLowerCase() === (email || '').trim().toLowerCase());
+      await auditLog(null, email, 'LOGIN_FAILED', null, { reason: 'User not found' }, req.ip);
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (user && user.password === password) {
+    let isMatch = false;
+    if (user.password.startsWith('$2b$') || user.password.startsWith('$2a$')) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      isMatch = user.password === password;
+      if (isMatch && pool) {
+        const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashed, user.id]);
+      }
+    }
+
+    if (isMatch) {
+      const token = jwt.sign(
+        { id: user.id, role: user.role, email: user.email, organization: user.organization },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      await auditLog(user.id, user.email, 'LOGIN_SUCCESS', user.id, null, req.ip);
+
       res.json({
         id: user.id,
         _id: user.id,
@@ -334,9 +437,10 @@ app.post('/api/auth/login', async (req, res) => {
         email: user.email,
         role: user.role,
         organization: user.organization,
-        token: 'fake-jwt-token-for-dev-' + user.id,
+        token: token,
       });
     } else {
+      await auditLog(user.id, user.email, 'LOGIN_FAILED', user.id, { reason: 'Invalid password' }, req.ip);
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
@@ -345,26 +449,13 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', async (req, res) => {
+app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-    const token = authHeader.split(' ')[1];
-    const userId = token.replace('fake-jwt-token-for-dev-', '').replace('fake-jwt-token-', '');
-    
+    const userId = req.user.id;
     let user = null;
     if (pool) {
-      try {
-        const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
-        user = users[0];
-      } catch (e) {
-        console.warn('MySQL getMe query failed, using fallback store:', e.message);
-      }
-    }
-    if (!user) {
-      user = MOCK_USERS.find(u => u.id === userId || u.email.toLowerCase() === userId.toLowerCase());
+      const [users] = await pool.query('SELECT id, name, email, role, organization, trial_end_date FROM users WHERE id = ?', [userId]);
+      user = users[0];
     }
 
     if (user) {
@@ -375,6 +466,7 @@ app.get('/api/auth/me', async (req, res) => {
         email: user.email,
         role: user.role,
         organization: user.organization,
+        trial_end_date: user.trial_end_date,
       });
     } else {
       res.status(404).json({ message: 'User not found' });
@@ -400,11 +492,23 @@ const MOCK_ORDERS = [
 ];
 
 // Projects
-app.get('/api/projects', async (req, res) => {
+app.get('/api/projects', authenticate, async (req, res) => {
   try {
+    const { role, id: userId, organization } = req.user;
     if (pool) {
       try {
-        const [projects] = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
+        let query = 'SELECT * FROM projects ORDER BY created_at DESC';
+        let params = [];
+
+        if (role === 'admin') {
+          query = 'SELECT * FROM projects WHERE assignedTo = ? ORDER BY created_at DESC';
+          params = [userId];
+        } else if (role === 'user') {
+          query = 'SELECT * FROM projects WHERE organization = ? ORDER BY created_at DESC';
+          params = [organization || ''];
+        }
+
+        const [projects] = await pool.query(query, params);
         return res.json(projects);
       } catch (e) {
         console.warn('DB query failed in GET /api/projects:', e.message);
@@ -678,76 +782,36 @@ app.put('/api/orders/:id/status', async (req, res) => {
   }
 });
 
-// --- AUTH ROUTES ---
-app.post('/api/auth/register', async (req, res) => {
+// --- AUTH & USER MANAGEMENT ROUTES ---
+app.post('/api/auth/register', authenticate, authorize('super-admin', 'ultra-super-admin'), async (req, res) => {
   try {
-    const { name, email, password, role, organization } = req.body;
+    const { name, email, password, role, organization, trial_end_date } = req.body;
     
-    // Check if user exists
     const [existing] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
     const id = uuidv4();
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
     await pool.query(
-      'INSERT INTO users (id, name, email, password, role, organization, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-      [id, name, email, password, role || 'user', organization]
+      'INSERT INTO users (id, name, email, password, role, organization, trial_end_date, creator_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+      [id, name, email, hashedPassword, role || 'user', organization, trial_end_date || null, req.user.id]
     );
     
+    await auditLog(req.user.id, req.user.email, 'USER_CREATED', id, { name, email, role, organization }, req.ip);
+
     const [users] = await pool.query('SELECT id, name, email, role, organization, created_at FROM users WHERE id = ?', [id]);
     const user = users[0];
-    res.status(201).json({ ...user, token: `fake-jwt-token-${user.id}` });
+    res.status(201).json({ ...user });
   } catch (e) {
     console.error('Error in POST /api/auth/register:', e);
     res.status(500).json({ message: e.message });
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-    
-    if (users.length > 0 && users[0].password === password) {
-      const { password: _, ...userWithoutPass } = users[0];
-      res.json({ ...userWithoutPass, token: `fake-jwt-token-${users[0].id}` });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
-    }
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
-app.get('/api/auth/me', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const userId = token.replace('fake-jwt-token-', '');
-    
-    if (!userId) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-
-    const [users] = await pool.query('SELECT id, name, email, role, organization, created_at FROM users WHERE id = ?', [userId]);
-
-    if (users.length === 0) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    res.json(users[0]);
-  } catch (e) {
-    console.error('Error in GET /api/auth/me:', e);
-    res.status(500).json({ message: e.message });
-  }
-});
-
-app.put('/api/auth/users/:id/role', async (req, res) => {
+app.put('/api/auth/users/:id/role', authenticate, authorize('super-admin', 'ultra-super-admin'), async (req, res) => {
   try {
     const { role } = req.body;
     const [result] = await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
@@ -756,45 +820,65 @@ app.put('/api/auth/users/:id/role', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    await auditLog(req.user.id, req.user.email, 'ROLE_CHANGED', req.params.id, { newRole: role }, req.ip);
+
     res.json({ success: true, message: 'Role updated successfully' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
-app.get('/api/auth/users', async (req, res) => {
+app.get('/api/auth/users', authenticate, authorize('super-admin', 'ultra-super-admin'), async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, email, role, organization, created_at FROM users');
+    const [users] = await pool.query('SELECT id, name, email, role, organization, trial_end_date, created_at FROM users');
     res.json(users);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
-app.delete('/api/auth/users/:id', async (req, res) => {
+app.delete('/api/auth/users/:id', authenticate, authorize('super-admin', 'ultra-super-admin'), async (req, res) => {
   try {
-    const [result] = await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+
+    const [target] = await pool.query('SELECT role FROM users WHERE id = ?', [req.params.id]);
+    if (target.length === 0) {
       return res.status(404).json({ message: 'User not found to delete.' });
     }
+    if (target[0].role === 'ultra-super-admin' && req.user.role !== 'ultra-super-admin') {
+      return res.status(403).json({ message: 'Only ultra-super-admins can delete ultra-super-admin accounts.' });
+    }
+
+    await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+    await auditLog(req.user.id, req.user.email, 'USER_DELETED', req.params.id, null, req.ip);
+
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
-app.put('/api/auth/users/:id/password', async (req, res) => {
+app.put('/api/auth/users/:id/password', authenticate, async (req, res) => {
   try {
     const { password } = req.body;
     if (!password || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    const [result] = await pool.query('UPDATE users SET password = ? WHERE id = ?', [password, req.params.id]);
+    if (req.user.id !== req.params.id && !['super-admin', 'ultra-super-admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'You can only change your own password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const [result] = await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.params.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'User not found in the database. Ensure ID match.' });
     }
+
+    await auditLog(req.user.id, req.user.email, 'PASSWORD_CHANGED', req.params.id, null, req.ip);
 
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (e) {
@@ -802,12 +886,27 @@ app.put('/api/auth/users/:id/password', async (req, res) => {
   }
 });
 
-app.put('/api/auth/users/:id', async (req, res) => {
+app.put('/api/auth/users/:id/trial', authenticate, authorize('ultra-super-admin'), async (req, res) => {
+  try {
+    const { trial_end_date } = req.body;
+    await pool.query('UPDATE users SET trial_end_date = ? WHERE id = ?', [trial_end_date, req.params.id]);
+    await auditLog(req.user.id, req.user.email, 'TRIAL_UPDATED', req.params.id, { trial_end_date }, req.ip);
+    res.json({ success: true, message: 'Trial updated successfully' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.put('/api/auth/users/:id', authenticate, async (req, res) => {
   try {
     const { name } = req.body;
     
     if (!name) {
       return res.status(400).json({ message: 'No valid data to update' });
+    }
+
+    if (req.user.id !== req.params.id && !['super-admin', 'ultra-super-admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
     }
 
     const [result] = await pool.query('UPDATE users SET name = ? WHERE id = ?', [name, req.params.id]);
@@ -984,31 +1083,41 @@ app.post('/api/upload/chunked/:uploadId/finalize', async (req, res) => {
 app.get('/api/projects/:id/view-pdf', async (req, res) => {
   try {
     const { id } = req.params;
-    const { token } = req.query;
+    const token = req.query.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
 
     if (!token) {
       return res.status(401).json({ message: 'Authentication token required' });
     }
 
-    // Identify user and role from token
-    const userId = token.replace('fake-jwt-token-', '');
-    const [users] = await pool.query('SELECT role FROM users WHERE id = ?', [userId]);
-    
-    if (users.length === 0) {
-      console.warn(`⚠️  Unauthorized PDF access attempt. Token: ${token}, Extracted ID: ${userId}`);
-      return res.status(401).json({ message: 'Invalid user or token' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
     }
-    
-    const role = users[0].role;
+
+    const userId = decoded.id;
+    let role = decoded.role;
+
+    if (pool) {
+      const [users] = await pool.query('SELECT role FROM users WHERE id = ?', [userId]);
+      if (users.length > 0) role = users[0].role;
+    }
+
     const isAdminRole = ['admin', 'super-admin', 'ultra-super-admin'].includes(role);
 
     // Fetch project to get the PDF path
-    const [projects] = await pool.query('SELECT name, pdf_url FROM projects WHERE id = ?', [id]);
-    if (projects.length === 0 || !projects[0].pdf_url) {
+    let project = null;
+    if (pool) {
+      const [projects] = await pool.query('SELECT name, pdf_url FROM projects WHERE id = ?', [id]);
+      if (projects.length > 0) project = projects[0];
+    }
+
+    if (!project || !project.pdf_url) {
       return res.status(404).json({ message: 'Project or PDF not found' });
     }
 
-    const project = projects[0];
+    await auditLog(userId, decoded.email, 'PDF_VIEWED', id, { isAdminRole }, req.ip);
     const filename = path.basename(project.pdf_url);
     const filePath = path.join(__dirname, 'uploads', filename);
 
@@ -1035,7 +1144,7 @@ app.get('/api/projects/:id/view-pdf', async (req, res) => {
       const { width, height } = page.getSize();
       
       // Draw repeating watermark pattern
-      const watermarkText = 'GOTEK';
+      const watermarkText = process.env.WATERMARK_TEXT || 'GOTEK';
       const fontSize = 60;
       const opacity = 0.15;
       const spacing = 200;

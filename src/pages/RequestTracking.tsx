@@ -9,6 +9,7 @@ import { projectService, uploadService } from '@/services/dataService';
 import { Project } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useRequireAuth } from '@/hooks/useAuth';
 
 const STAGES = [
     { key: 'data_collected', label: 'Data Collected', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -71,6 +72,7 @@ const getProjectLowestStage = (completedStages: string[]) => {
 };
 
 const RequestTracking = () => {
+    const { user, isLoading: isLoadingAuth } = useRequireAuth('/');
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState<string | null>(null);
