@@ -213,10 +213,10 @@ async function connectDB() {
     // Ensure schema is up to date
     await ensureSchema();
   } catch (err) {
+    pool = null;
     console.error('❌ CRITICAL: MySQL connection failed!');
     console.error('Please check your MYSQL_HOST, USER, and PASSWORD variables.');
     console.error(err.message);
-    // process.exit(1); // Do not exit, allow server to stay up for log inspection
   }
 }
 
@@ -406,6 +406,10 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     }
 
     if (!user) {
+      user = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+    }
+
+    if (!user) {
       await auditLog(null, email, 'LOGIN_FAILED', null, { reason: 'User not found' }, req.ip);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -483,10 +487,47 @@ const MOCK_ORDERS = [
     id: 'order-lanyard-demo-1',
     projectId: 'lanyard-demo-1',
     status: 'submitted',
-    createdAt: new Date().toISOString(),
-    studentCount: 100,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    studentCount: 120,
+    created_by: 'dd055e0a-6941-4ab5-a30e-e148438cfdcf',
     project: { name: 'GoTek Corporate Lanyards', organization: 'GOTEK' },
-    creator: { name: 'Super Admin', email: 'admin@gotek.com' },
+    creator: { id: 'dd055e0a-6941-4ab5-a30e-e148438cfdcf', name: 'Super Admin', email: 'admin@gotek.com', role: 'super-admin', organization: 'GOTEK' },
+    template: { name: 'Lanyard' }
+  },
+  {
+    _id: 'order-lanyard-demo-2',
+    id: 'order-lanyard-demo-2',
+    projectId: 'lanyard-demo-2',
+    status: 'validated',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    studentCount: 250,
+    created_by: '69d602c23fe66f52321c75e5',
+    project: { name: 'Sample Admin School Lanyards', organization: 'GOTEK' },
+    creator: { id: '69d602c23fe66f52321c75e5', name: 'sample2', email: 'sub1@gmail.com', role: 'admin', organization: 'GOTEK' },
+    template: { name: 'Lanyard' }
+  },
+  {
+    _id: 'order-lanyard-demo-3',
+    id: 'order-lanyard-demo-3',
+    projectId: 'lanyard-demo-3',
+    status: 'generated',
+    createdAt: new Date(Date.now() - 14400000).toISOString(),
+    studentCount: 500,
+    created_by: '6a0709a62c2895.84473139',
+    project: { name: 'Devasri Academy Lanyards', organization: 'Gotek' },
+    creator: { id: '6a0709a62c2895.84473139', name: 'Devasri', email: 'devasri@gmail.com', role: 'admin', organization: 'Gotek' },
+    template: { name: 'Lanyard' }
+  },
+  {
+    _id: 'order-lanyard-demo-4',
+    id: 'order-lanyard-demo-4',
+    projectId: 'lanyard-demo-4',
+    status: 'exported',
+    createdAt: new Date(Date.now() - 28800000).toISOString(),
+    studentCount: 180,
+    created_by: '6a070d1a435728.64421047',
+    project: { name: 'Rakshana High School Lanyards', organization: 'Gotek' },
+    creator: { id: '6a070d1a435728.64421047', name: 'Rakshanadevi', email: 'rakshana@gmail.com', role: 'admin', organization: 'Gotek' },
     template: { name: 'Lanyard' }
   }
 ];
@@ -639,27 +680,43 @@ app.post('/api/records/bulk', async (req, res) => {
 });
 
 // Orders (Project Sessions)
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', authenticate, async (req, res) => {
   try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const userEmail = req.user.email;
+    const isSuperAdmin = ['super-admin', 'ultra-super-admin'].includes(userRole);
+
     if (pool) {
       try {
-        const [orders] = await pool.query(`
+        let sql = `
           SELECT 
             o.id,
             o.projectId,
             o.status,
             o.created_at,
+            o.created_by,
             p.name AS project_name,
             p.organization AS project_organization,
             p.template AS project_template,
             p.total_records AS studentCount,
+            u.id AS creator_id,
             u.name AS creator_name,
-            u.email AS creator_email
+            u.email AS creator_email,
+            u.role AS creator_role,
+            u.organization AS creator_organization
           FROM orders o
           LEFT JOIN projects p ON o.projectId = p.id
-          LEFT JOIN users u ON p.created_by = u.id
-          ORDER BY o.created_at DESC
-        `);
+          LEFT JOIN users u ON (o.created_by = u.id OR p.created_by = u.id)
+        `;
+        const params = [];
+        if (!isSuperAdmin) {
+          sql += ` WHERE (o.created_by = ? OR p.created_by = ?) `;
+          params.push(userId, userId);
+        }
+        sql += ` ORDER BY o.created_at DESC`;
+
+        const [orders] = await pool.query(sql, params);
         
         return res.json(orders.map(o => ({
           _id: o.id,
@@ -668,13 +725,17 @@ app.get('/api/orders', async (req, res) => {
           status: o.status,
           createdAt: o.created_at,
           studentCount: o.studentCount || 0,
+          created_by: o.creator_id || o.created_by || userId,
           project: {
             name: o.project_name || 'Lanyard Project',
             organization: o.project_organization || 'GoTek Org'
           },
           creator: {
+            id: o.creator_id || o.created_by || userId,
             name: o.creator_name || 'Admin',
-            email: o.creator_email || 'admin@gotek.com'
+            email: o.creator_email || userEmail || 'admin@gotek.com',
+            role: o.creator_role || 'admin',
+            organization: o.creator_organization || 'GoTek'
           },
           template: {
             name: o.project_template || 'Lanyard'
@@ -684,7 +745,18 @@ app.get('/api/orders', async (req, res) => {
         console.warn('DB query failed in GET /api/orders:', e.message);
       }
     }
-    res.json(MOCK_ORDERS);
+
+    // Fallback to MOCK_ORDERS if pool is null
+    if (isSuperAdmin) {
+      res.json(MOCK_ORDERS);
+    } else {
+      const filteredMock = MOCK_ORDERS.filter(o => 
+        o.created_by === userId || 
+        o.creator?.id === userId || 
+        (o.creator?.email && userEmail && o.creator.email.toLowerCase() === userEmail.toLowerCase())
+      );
+      res.json(filteredMock);
+    }
   } catch (e) {
     res.json(MOCK_ORDERS);
   }
@@ -708,16 +780,17 @@ app.get('/api/orders/:id', async (req, res) => {
   }
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', authenticate, async (req, res) => {
   try {
     const id = req.body.id || `order-${uuidv4()}`;
     const { projectId, status } = req.body;
+    const userId = req.user?.id || req.body.adminId || '69d602c23fe66f52321c75e5';
     
     if (pool) {
       try {
         await pool.query(
-          'INSERT INTO orders (id, projectId, status, created_at) VALUES (?, ?, ?, NOW())',
-          [id, projectId, status || 'submitted']
+          'INSERT INTO orders (id, projectId, status, created_by, created_at) VALUES (?, ?, ?, ?, NOW())',
+          [id, projectId, status || 'submitted', userId]
         );
         const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
         if (orders.length > 0) return res.json(orders[0]);
@@ -734,13 +807,17 @@ app.post('/api/orders', async (req, res) => {
       status: status || 'submitted',
       createdAt: new Date().toISOString(),
       studentCount: proj.total_records || 100,
+      created_by: userId,
       project: {
         name: proj.name || 'Lanyard Project',
         organization: proj.organization || 'GoTek Org'
       },
       creator: {
-        name: 'Admin',
-        email: 'admin@gotek.com'
+        id: userId,
+        name: req.user?.name || 'Admin',
+        email: req.user?.email || 'sub1@gmail.com',
+        role: req.user?.role || 'admin',
+        organization: req.user?.organization || 'GOTEK'
       },
       template: {
         name: 'Lanyard'
