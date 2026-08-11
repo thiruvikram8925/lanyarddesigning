@@ -193,6 +193,33 @@ export default function LanyardOrderDetailsModal({
                 </div>
               </div>
 
+              {/* Admin Creator Details Banner */}
+              <div className="bg-gradient-to-r from-amber-50 to-indigo-50 border border-amber-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                    <User size={16} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">Admin Creator Info</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold text-slate-800">
+                        {order.creator?.name || 'Admin User'}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        ({order.creator?.email || 'N/A'})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase">Admin ID:</span>
+                  <span className="px-2.5 py-1 text-xs font-mono font-bold bg-white text-indigo-700 rounded-md border border-slate-200 shadow-2xs">
+                    {order.creator?.id || order.created_by || 'N/A'}
+                  </span>
+                </div>
+              </div>
+
               {/* Main Content Grid: Preview + Specs */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* 2D Canvas Lanyard Preview */}
