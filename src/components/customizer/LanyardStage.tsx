@@ -435,7 +435,12 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
   const customLogos = (design.lanyardLogos as Array<any>) || [];
 
   if (customLogos.length > 0 && !forceNoLogo) {
-    // Render distinct logo items added by "+ Add to Lanyard"
+    // Filter custom logos by zone to prevent auto-duplicating logos across left, center, and right zones
+    const zoneLogos = customLogos.filter((logoItem: any) => {
+      if (logoItem.zone) return logoItem.zone === zone;
+      return zone === 'left';
+    });
+
     return (
       <Group>
         {/* Render text items if present */}
@@ -490,8 +495,8 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
           </Group>
         )}
 
-        {/* Render each individual added image with its own red cross delete button */}
-        {customLogos.map((logoItem: any) => (
+        {/* Render distinct added images without repeating across zones */}
+        {zoneLogos.map((logoItem: any) => (
           <IndividualLanyardLogo
             key={logoItem.id}
             logoItem={logoItem}
@@ -794,9 +799,11 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
       y: (pointer.y - stagePos.y) / oldScale,
     };
 
-    const scaleBy = 1.1;
-    let newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    newScale = Math.max(0.3, Math.min(newScale, 6));
+    // Reduced zoom sensitivity (2.5% step factor for flat mode)
+    const stepFactor = isFlatMode ? 0.025 : 0.05;
+    const direction = e.evt.deltaY < 0 ? 1 : -1;
+    let newScale = oldScale * (1 + direction * stepFactor);
+    newScale = Math.max(0.5, Math.min(newScale, 3.5));
 
     const newPos = {
       x: pointer.x - mousePointTo.x * newScale,
@@ -872,15 +879,45 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
   };
 
   if (isFlatMode) {
-    const fw = containerWidth || 800;
-    const fh = containerHeight || 480;
-    const h = 420;
-    const frontX = fw/2 - strapW - 40;
-    const backX = fw/2 + 40;
-    const strapY = (fh - h) / 2;
+    const fw = containerWidth || 980;
+    const fh = containerHeight || 560;
     
+    const mmStr = (design.width as string) || '20mm';
+    const finishMm = parseInt(mmStr.replace('mm', ''), 10) || 20;
+    const bleedMm = parseFloat((finishMm * 1.155).toFixed(1)); // 23.1 mm for 20mm finish
+
+    // Responsive 38-inch horizontal strip layout (Zoomed & Centered)
+    const STRAP_LEN = Math.min(800, Math.max(600, fw - 160));
+    const startX = (fw - STRAP_LEN) / 2 + 40; // Shift right to make room for badges on left
+
+    // 38 inches total breakdown (2" left ext, 14" left side, 4" neck, 14" right side, 4" right ext)
+    const x0 = startX;
+    const x1 = startX + STRAP_LEN * (2 / 38);   // End of 2" Left Extension
+    const x2 = x1 + STRAP_LEN * (14 / 38);      // End of 14" Left Side Area / Start of Neck Area
+    const x3 = x2 + STRAP_LEN * (4 / 38);       // End of 4" Neck Area / Start of Right Side Area
+    const x4 = x3 + STRAP_LEN * (14 / 38);      // End of 14" Right Side Area / Start of 4" Right Extension
+    const x5 = x4 + STRAP_LEN * (4 / 38);       // End of 4" Right Extension
+
+    const finishH = Math.max(34, Math.min(52, (finishMm / 20) * 42)); // High-detail enlarged strap height
+    const bleedH = finishH * (bleedMm / finishMm); // 23.1mm bleed scale height
+    
+    const stripGap = 80; // Spacious gap between Front and Back strips
+    const frontStrapY = fh / 2 - finishH - stripGap / 2 + 10;
+    const backStrapY = fh / 2 + stripGap / 2 + 10;
+
+    const frontBleedY = frontStrapY - (bleedH - finishH) / 2;
+    const backBleedY = backStrapY - (bleedH - finishH) / 2;
+
+    const dimensions = [
+      { x: x0, w: x1 - x0, label: '2mm' },
+      { x: x1, w: x2 - x1, label: 'left part' },
+      { x: x2, w: x3 - x2, label: 'center' },
+      { x: x3, w: x4 - x3, label: 'right part' },
+      { x: x4, w: x5 - x4, label: '4mm' }
+    ];
+
     return (
-      <div className="w-full h-full flex justify-center items-center bg-transparent" ref={containerRef}>
+      <div className="w-full h-full flex justify-center items-center bg-white overflow-hidden" ref={containerRef}>
         <Stage 
           width={fw} 
           height={fh} 
@@ -888,7 +925,7 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
           scaleY={stageScale} 
           x={stagePos.x} 
           y={stagePos.y} 
-          className="bg-transparent" 
+          className="bg-white" 
           onClick={onSelect} 
           onTap={onSelect}
           onWheel={handleWheel}
@@ -899,18 +936,148 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
           onDragEnd={handleDragEnd}
         >
           <Layer ref={layerRef}>
-            <Group x={frontX} y={strapY}>
-              <FlatStrap x={0} y={0} w={strapW} h={h} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
-                 <UnifiedStrapContent x1={strapW/2} y1={20} x2={strapW/2} y2={h-20} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" />
-              </FlatStrap>
+            {/* Clean White Studio Canvas Background */}
+            <Rect x={0} y={0} width={fw} height={fh} fill="#ffffff" />
+
+            {/* FRONT SIDE BADGE / LABEL (Positioned cleanly above dimension marks) */}
+            <Group x={x0} y={frontStrapY - 38}>
+              <Rect x={0} y={0} width={75} height={18} fill="#4f46e5" cornerRadius={4} />
+              <Text text="FRONT SIDE" x={0} y={4.5} width={75} align="center" fontSize={9} fill="#ffffff" fontStyle="bold" />
             </Group>
-            
-            <Group x={backX} y={strapY}>
-              <FlatStrap x={0} y={0} w={strapW} h={h} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
-                 <UnifiedStrapContent x1={strapW/2} y1={h-20} x2={strapW/2} y2={20} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" />
-              </FlatStrap>
+
+            {/* BACK SIDE BADGE / LABEL (Positioned cleanly below back strip dimension marks) */}
+            <Group x={x0} y={backStrapY + finishH + 32}>
+              <Rect x={0} y={0} width={75} height={18} fill="#64748b" cornerRadius={4} />
+              <Text text="BACK SIDE" x={0} y={4.5} width={75} align="center" fontSize={9} fill="#ffffff" fontStyle="bold" />
             </Group>
-            
+
+            {/* TOP OUTER DIMENSION MARKS (ABOVE FRONT STRIP) */}
+            <Group y={frontBleedY - 18}>
+              {dimensions.map((dim, i) => (
+                <Group key={`dim-top-${i}`} x={dim.x}>
+                  <Line points={[0, 10, 0, 5, dim.w, 5, dim.w, 10]} stroke="#94a3b8" strokeWidth={1.5} />
+                  <Text text={dim.label} x={0} y={-7} width={dim.w} align="center" fontSize={11} fill="#64748b" fontStyle="bold" />
+                </Group>
+              ))}
+            </Group>
+
+            {/* BOTTOM OUTER DIMENSION MARKS (BELOW BACK STRIP) */}
+            <Group y={backBleedY + bleedH + 8}>
+              {dimensions.map((dim, i) => (
+                <Group key={`dim-bot-${i}`} x={dim.x}>
+                  <Line points={[0, 0, 0, 5, dim.w, 5, dim.w, 0]} stroke="#94a3b8" strokeWidth={1.5} />
+                  <Text text={dim.label} x={0} y={10} width={dim.w} align="center" fontSize={11} fill="#64748b" fontStyle="bold" />
+                </Group>
+              ))}
+            </Group>
+
+            {/* FRONT BLEED OUTLINE (23.1 mm) */}
+            {design.showBleed !== false && (
+              <Rect 
+                x={x0} 
+                y={frontBleedY} 
+                width={STRAP_LEN} 
+                height={bleedH} 
+                stroke="rgba(239, 68, 68, 0.45)" 
+                strokeWidth={1.2} 
+                dash={[5, 4]} 
+              />
+            )}
+
+            {/* BACK BLEED OUTLINE (23.1 mm) */}
+            {design.showBleed !== false && (
+              <Rect 
+                x={x0} 
+                y={backBleedY} 
+                width={STRAP_LEN} 
+                height={bleedH} 
+                stroke="rgba(239, 68, 68, 0.45)" 
+                strokeWidth={1.2} 
+                dash={[5, 4]} 
+              />
+            )}
+
+            {/* ==================== FRONT SIDE STRIP ==================== */}
+            <FlatStrap x={x0} y={frontStrapY} w={STRAP_LEN} h={finishH} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
+              {/* Left Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x1 + 6 - x0} y1={finishH / 2} x2={x2 - 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" 
+              />
+
+              {/* Center Neck Area */}
+              {design.lanyardDesignStyle === 'central-logo' ? (
+                <StaticLogo 
+                  cx={(x2 + x3) / 2 - x0} cy={finishH / 2} angle={0} logo={logoImg} strapW={finishH} 
+                  logoScale={design.logoScale} logoOffset={design.copyMode === 'synchronized' ? design.logoOffset : design.logoOffsetCenter} 
+                  logoRotation={design.logoRotation} onRemove={onRemoveLogo} onDrag={onUpdateLogo} showControls={showControls} design={design} 
+                />
+              ) : (
+                <UnifiedStrapContent 
+                  x1={x2 + 6 - x0} y1={finishH / 2} x2={x3 - 6 - x0} y2={finishH / 2} 
+                  design={design} logoImg={logoImg} strapW={finishH} 
+                  onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                  onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="center" 
+                />
+              )}
+
+              {/* Right Side Design Area (Rotated 180°) */}
+              <UnifiedStrapContent 
+                x1={x4 - 6 - x0} y1={finishH / 2} x2={x3 + 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" 
+              />
+            </FlatStrap>
+
+            {/* ==================== BACK SIDE STRIP ==================== */}
+            <FlatStrap x={x0} y={backStrapY} w={STRAP_LEN} h={finishH} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
+              {/* Back Left Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x2 - 6 - x0} y1={finishH / 2} x2={x1 + 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-left" 
+              />
+
+              {/* Back Center Neck Area */}
+              {design.lanyardDesignStyle === 'central-logo' ? (
+                <StaticLogo 
+                  cx={(x2 + x3) / 2 - x0} cy={finishH / 2} angle={180} logo={logoImg} strapW={finishH} 
+                  logoScale={design.logoScale} logoOffset={design.copyMode === 'synchronized' ? design.logoOffset : design.logoOffsetCenter} 
+                  logoRotation={design.logoRotation} onRemove={onRemoveLogo} onDrag={onUpdateLogo} showControls={showControls} design={design} 
+                />
+              ) : (
+                <UnifiedStrapContent 
+                  x1={x3 - 6 - x0} y1={finishH / 2} x2={x2 + 6 - x0} y2={finishH / 2} 
+                  design={design} logoImg={logoImg} strapW={finishH} 
+                  onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                  onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-center" 
+                />
+              )}
+
+              {/* Back Right Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x3 + 6 - x0} y1={finishH / 2} x2={x4 - 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-right" 
+              />
+            </FlatStrap>
+
+            {/* Subtle Vertical Section Alignment Lines Across Both Straps */}
+            {[x1, x2, x3, x4].map((x, i) => (
+              <Line 
+                key={`section-guide-${i}`} 
+                points={[x, frontBleedY - 4, x, backBleedY + bleedH + 4]} 
+                stroke="rgba(148, 163, 184, 0.35)" 
+                strokeWidth={1} 
+                dash={[3, 3]} 
+              />
+            ))}
+
             <Transformer ref={trRef} boundBoxFunc={(oldB, newB) => (newB.width < 5 || newB.height < 5) ? oldB : newB} />
           </Layer>
         </Stage>
