@@ -63,7 +63,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback />}>
                 <TrialGuard>
@@ -103,13 +103,18 @@ const App = () => (
                       <SchoolManagement />
                     </RequireRole>
                   } />
+                  <Route path="/orders" element={
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
+                      <OrderManagement />
+                    </RequireRole>
+                  } />
                   <Route path="/admin/orders" element={
-                    <RequireRole roles={['admin', 'super-admin', 'ultra-super-admin']}>
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
                       <OrderManagement />
                     </RequireRole>
                   } />
                   <Route path="/admin/orders/:id" element={
-                    <RequireRole roles={['admin', 'super-admin', 'ultra-super-admin']}>
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
                       <OrderDetails />
                     </RequireRole>
                   } />

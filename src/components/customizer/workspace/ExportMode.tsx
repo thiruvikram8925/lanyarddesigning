@@ -35,14 +35,17 @@ export default function ExportMode({ stageRef, idCardStageRef, hidePreview = fal
     
     setIsPlacingOrder(true);
     try {
-      const orderId = `order-${projectId}`;
+      const orderId = `order-${projectId}-${Date.now()}`;
       
       // Try to create order. If it exists (fails due to duplicate key), update its status.
       try {
         await orderService.create({ 
           id: orderId, 
           projectId, 
-          status: 'submitted' 
+          status: 'submitted',
+          created_by: user?.id || user?.email,
+          creator_name: user?.name,
+          creator_email: user?.email,
         });
       } catch (err) {
         await orderService.updateStatus(orderId, 'submitted');

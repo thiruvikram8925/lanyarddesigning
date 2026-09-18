@@ -115,18 +115,22 @@ export default function LanyardDesigner() {
           organization: user?.organization || 'GoTek Org',
           status: 'submitted',
           template: 'Lanyard',
+          created_by: user?.id || user?.email,
         });
       } catch (err) {
         console.warn('Project creation fallback:', err);
       }
 
       // 3. Create order entry on server
-      const orderId = `order-${projectId}`;
+      const orderId = `order-${projectId}-${Date.now()}`;
       try {
         await orderService.create({
           id: orderId,
           projectId,
           status: 'submitted',
+          created_by: user?.id || user?.email,
+          creator_name: user?.name,
+          creator_email: user?.email,
         });
       } catch (err) {
         console.warn('Order creation fallback:', err);

@@ -29,7 +29,7 @@ const navigation: NavGroup[] = [
         items: [
             { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', allowedRoles: ALL_ROLES },
             { label: 'Projects', icon: FolderOpen, path: '/projects', allowedRoles: ALL_ROLES },
-            { label: 'Orders', icon: ShoppingCart, path: '/admin/orders', allowedRoles: ADMIN_ROLES },
+            { label: 'Orders', icon: ShoppingCart, path: '/admin/orders', allowedRoles: ALL_ROLES },
             { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ADMIN_ROLES }
         ]
     },

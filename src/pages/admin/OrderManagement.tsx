@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { orderService } from "@/services/dataService";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, LucideIcon, ArrowLeft, ShieldCheck, UserCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, LucideIcon, ArrowLeft, ShieldCheck, UserCheck, Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 import LanyardOrderDetailsModal from "@/components/admin/LanyardOrderDetailsModal";
@@ -38,8 +40,59 @@ const OrderManagement = () => {
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedOrderModal, setSelectedOrderModal] = useState<OrderWithDetails | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+  const [newOrderData, setNewOrderData] = useState({
+    projectName: '',
+    organization: '',
+    studentCount: 100,
+    status: 'submitted'
+  });
 
   const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'ultra-super-admin';
+
+  const handleCreateOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrderData.projectName.trim()) {
+      toast.error('Please enter a project name');
+      return;
+    }
+    setIsSubmittingNew(true);
+    try {
+      const orderId = `order-${Date.now()}`;
+      await orderService.create({
+        id: orderId,
+        projectId: orderId.replace('order-', ''),
+        status: newOrderData.status,
+        studentCount: Number(newOrderData.studentCount),
+        projectName: newOrderData.projectName,
+        organization: newOrderData.organization || 'GOTEK'
+      });
+
+      toast.success('New Order created successfully!');
+      setIsCreateModalOpen(false);
+      setNewOrderData({ projectName: '', organization: '', studentCount: 100, status: 'submitted' });
+
+      // Refresh orders
+      const ordersData = await orderService.getAll();
+      const list = Array.isArray(ordersData) ? ordersData : [];
+      const ordersWithDetails = list.map((order: Record<string, unknown>) => ({
+        ...order,
+        _id: (order._id || order.id || '') as string,
+        student_count: (order.studentCount || order.student_count || 100) as number,
+        creator: (order.creator || {}) as Record<string, unknown>,
+        project: (order.project || {}) as Record<string, unknown>,
+        template: (order.template || {}) as Record<string, unknown>,
+      })) as OrderWithDetails[];
+
+      setOrders(ordersWithDetails);
+    } catch (err) {
+      console.error('Error creating order:', err);
+      toast.error('Failed to create order');
+    } finally {
+      setIsSubmittingNew(false);
+    }
+  };
 
   const statusConfig: Record<string, { label: string; color: string; icon: LucideIcon }> = {
     draft: { label: "Draft", color: "bg-gray-500", icon: Clock },
@@ -87,9 +140,10 @@ const OrderManagement = () => {
       orders
         .map(o => {
           const adminId = (o.creator?.id || o.created_by || 'Unknown') as string;
-          const adminName = (o.creator?.name || 'Admin') as string;
-          const adminEmail = (o.creator?.email || '') as string;
-          return [adminId, { id: adminId, name: adminName, email: adminEmail }];
+          const rawEmail = (o.creator?.email || '') as string;
+          const rawName = (o.creator?.name || '') as string;
+          const adminName = (rawName && rawName !== 'Admin') ? rawName : (rawEmail ? rawEmail.split('@')[0] : 'Admin');
+          return [adminId, { id: adminId, name: adminName, email: rawEmail }];
         })
     ).values()
   );
@@ -225,9 +279,15 @@ const OrderManagement = () => {
       <AdminHeader />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+          </Button>
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" /> Create New Order
           </Button>
         </div>
         <Card className="mb-6 border-slate-200 shadow-sm">
@@ -357,8 +417,9 @@ const OrderManagement = () => {
                 <TableBody>
                   {filteredOrders.map((order) => {
                     const creatorId = (order.creator?.id || order.created_by || 'N/A') as string;
-                    const creatorName = (order.creator?.name || 'Admin') as string;
                     const creatorEmail = (order.creator?.email || 'N/A') as string;
+                    const rawName = (order.creator?.name || '') as string;
+                    const creatorName = (rawName && rawName !== 'Admin') ? rawName : (creatorEmail !== 'N/A' ? creatorEmail.split('@')[0] : 'Admin');
                     const creatorOrg = (order.creator?.organization || 'GoTek') as string;
 
                     return (
@@ -479,6 +540,92 @@ const OrderManagement = () => {
           order={selectedOrderModal}
           onStatusUpdate={handleStatusUpdate}
         />
+
+        {/* Create New Order Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-900">Create New Order</DialogTitle>
+              <DialogDescription className="text-slate-500">
+                Submit a new lanyard order for printing and manufacturing.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleCreateOrderSubmit} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="projectName" className="font-bold text-slate-700">Project / School Name *</Label>
+                <Input
+                  id="projectName"
+                  placeholder="e.g. St. Xavier High School Lanyards"
+                  value={newOrderData.projectName}
+                  onChange={e => setNewOrderData({ ...newOrderData, projectName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="organization" className="font-bold text-slate-700">Organization Name</Label>
+                <Input
+                  id="organization"
+                  placeholder="e.g. GOTEK or School Name"
+                  value={newOrderData.organization}
+                  onChange={e => setNewOrderData({ ...newOrderData, organization: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="studentCount" className="font-bold text-slate-700">Quantity (Units)</Label>
+                  <Input
+                    id="studentCount"
+                    type="number"
+                    min="1"
+                    value={newOrderData.studentCount}
+                    onChange={e => setNewOrderData({ ...newOrderData, studentCount: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="orderStatus" className="font-bold text-slate-700">Initial Status</Label>
+                  <Select 
+                    value={newOrderData.status} 
+                    onValueChange={v => setNewOrderData({ ...newOrderData, status: v })}
+                  >
+                    <SelectTrigger id="orderStatus">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="uploaded">Uploaded</SelectItem>
+                      <SelectItem value="validated">Validated</SelectItem>
+                      <SelectItem value="generated">Generated</SelectItem>
+                      <SelectItem value="exported">Exported</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsCreateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmittingNew}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                >
+                  {isSubmittingNew ? 'Creating...' : 'Create Order'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
