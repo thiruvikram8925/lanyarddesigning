@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import LanyardStage from '../customizer/LanyardStage';
-import { Ruler, ZoomIn, ZoomOut, RotateCcw, Sparkles } from 'lucide-react';
+import { Ruler, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 export default function FlatLayoutView() {
   const [zoom, setZoom] = useState(1);
@@ -58,19 +58,6 @@ export default function FlatLayoutView() {
         </div>
       </div>
 
-      {/* Info Callout Bar */}
-      <div className="shrink-0 mx-6 mt-3 px-4 py-2 bg-slate-900 text-white rounded-xl shadow-sm flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>
-            <strong>Safe Content Area Active:</strong> Text & logos remain inside Main Content Starting Points. Extensions (Left 2" & Right 4") contain background color/pattern design only.
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-[11px] text-slate-300 font-medium">
-          <span>Logo Max: <strong className="text-white">14 mm</strong></span>
-          <span>Name Max: <strong className="text-white">12 mm</strong> (Min 8 mm)</span>
-        </div>
-      </div>
 
       {/* Main Flat Stage Area */}
       <div className="flex-1 flex items-center justify-center p-4 relative overflow-auto">
