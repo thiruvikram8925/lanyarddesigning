@@ -3,7 +3,7 @@ import { useConfiguratorStore } from '../store/useConfiguratorStore';
 import {
   LayoutTemplate, Palette, Type, Upload, Save, Eye, Download, ShoppingCart,
   ZoomIn, ZoomOut, RotateCcw, Cloud, Loader2, ChevronLeft,
-  Layers, History, MonitorSmartphone, Settings2,
+  Layers, History, MonitorSmartphone, Settings2, FolderHeart,
   AlignLeft, AlignCenter, AlignRight, FlipHorizontal, Repeat, MoveHorizontal, Baseline, Image, Maximize, GitCommit,
   Crop, Trash2
 } from 'lucide-react';
@@ -14,10 +14,12 @@ import { toast } from 'sonner';
 import LanyardImageCropModal from '../components/lanyard/LanyardImageCropModal';
 
 // Left sidebar panels
-import TemplatesPanel from '../components/lanyard/TemplatesPanel';
 import ElementsPanel from '../components/lanyard/ElementsPanel';
 import TextPanel from '../components/lanyard/TextPanel';
 import UploadPanel from '../components/lanyard/UploadPanel';
+import LayersPanel from '../components/lanyard/LayersPanel';
+import TemplatesPanel from '../components/lanyard/TemplatesPanel';
+import SavedLanyardsPanel from '../components/lanyard/SavedLanyardsPanel';
 
 // Center canvas views
 import LanyardStage from '../components/customizer/LanyardStage';
@@ -26,15 +28,16 @@ import ClipHardwareView from '../components/lanyard/ClipHardwareView';
 import ValidationView from '../components/lanyard/ValidationView';
 
 const LEFT_TABS = [
-  { id: 'templates', icon: LayoutTemplate, label: 'Templates' },
-  { id: 'elements', icon: Palette, label: 'Elements' },
+  { id: 'elements', icon: Palette, label: 'Element' },
   { id: 'text', icon: Type, label: 'Text' },
   { id: 'upload', icon: Upload, label: 'Upload' },
+  { id: 'layers', icon: Layers, label: 'Layer' },
+  { id: 'templates', icon: LayoutTemplate, label: 'Template' },
+  { id: 'saved-lanyards', icon: FolderHeart, label: 'Saved Lanyard' },
 ] as const;
 
 type LeftTab = typeof LEFT_TABS[number]['id'];
 type ViewMode = '2d' | 'flat' | 'clip' | 'validation';
-type RightTab = 'props' | 'layers' | 'views' | 'history';
 
 export default function LanyardDesigner() {
   const navigate = useNavigate();
@@ -43,10 +46,9 @@ export default function LanyardDesigner() {
   const isSyncing = useConfiguratorStore(s => s.isSyncing);
   const saveLocal = useConfiguratorStore(s => s.saveLocal);
 
-  const [leftTab, setLeftTab] = useState<LeftTab>('templates');
+  const [leftTab, setLeftTab] = useState<LeftTab>('elements');
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('2d');
-  const [rightTab, setRightTab] = useState<RightTab>('props');
   const [zoom, setZoom] = useState(1);
   const [saveMsg, setSaveMsg] = useState('');
   const [cropModalImageUrl, setCropModalImageUrl] = useState<string | null>(null);
@@ -294,8 +296,7 @@ export default function LanyardDesigner() {
 
         {/* Left Panel */}
         {leftPanelOpen && (
-          <div className="w-[240px] shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-            {leftTab === 'templates' && <TemplatesPanel />}
+          <div className="w-[270px] shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
             {leftTab === 'elements' && <ElementsPanel />}
             {leftTab === 'text' && <TextPanel />}
             {leftTab === 'upload' && (
@@ -305,6 +306,21 @@ export default function LanyardDesigner() {
                 onAddLogo={handleAddLogo}
               />
             )}
+            {leftTab === 'layers' && (
+              <LayersPanel
+                onOpenCropModal={(url) => setCropModalImageUrl(url)}
+                onOpenUpload={() => {
+                  setLeftTab('upload');
+                  setLeftPanelOpen(true);
+                }}
+                onOpenText={() => {
+                  setLeftTab('text');
+                  setLeftPanelOpen(true);
+                }}
+              />
+            )}
+            {leftTab === 'templates' && <TemplatesPanel />}
+            {leftTab === 'saved-lanyards' && <SavedLanyardsPanel />}
           </div>
         )}
 
@@ -390,682 +406,6 @@ export default function LanyardDesigner() {
           {viewMode === 'flat' && <FlatLayoutView />}
           {viewMode === 'clip' && <ClipHardwareView />}
           {viewMode === 'validation' && <ValidationView />}
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="w-[320px] shrink-0 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
-          {/* Right Tabs */}
-          <div className="shrink-0 flex border-b border-slate-200">
-            {([
-              { id: 'props' as RightTab, icon: Settings2, label: 'Props' },
-              { id: 'layers' as RightTab, icon: Layers, label: 'Layers' },
-              { id: 'views' as RightTab, icon: MonitorSmartphone, label: 'Views' },
-              { id: 'history' as RightTab, icon: History, label: 'History' },
-            ]).map(tab => {
-              const Icon = tab.icon;
-              const isActive = rightTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setRightTab(tab.id)}
-                  className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all border-b-2 ${
-                    isActive
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <Icon size={16} />
-                  <span className="text-[9px] font-bold">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Right Content */}
-          <div className="flex-1 overflow-y-auto">
-            {rightTab === 'props' && (
-              <div className="p-4">
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Lanyard Settings</h3>
-                <p className="text-[10px] text-indigo-500 font-medium mb-5">Click a strap zone to edit it</p>
-
-                <div className="space-y-4">
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                      Lanyard Strap Text
-                    </h4>
-
-                    <div className="space-y-3">
-                      {design.copyMode === 'synchronized' ? (
-                        <div>
-                          <label className="text-[10px] text-slate-400 font-medium block mb-1">Lanyard Text (Mirrored on all sides)</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. COMPANY NAME"
-                            value={design.customTextLeft || ''}
-                            onChange={e => {
-                              setField('customTextLeft', e.target.value);
-                              setField('customTextCenter', e.target.value);
-                              setField('customTextRight', e.target.value);
-                            }}
-                            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <div>
-                            <label className="text-[10px] text-slate-400 font-medium block mb-1">Left Strap Text</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. RAVENCLAW"
-                              value={design.customTextLeft || ''}
-                              onChange={e => setField('customTextLeft', e.target.value)}
-                              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-slate-400 font-medium block mb-1">Right Strap Text</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. UNIVERSITY"
-                              value={design.customTextRight || ''}
-                              onChange={e => setField('customTextRight', e.target.value)}
-                              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-slate-400 font-medium block mb-1">Center Text / Badge</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. STAFF / VIP"
-                              value={design.customTextCenter || ''}
-                              onChange={e => setField('customTextCenter', e.target.value)}
-                              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Text Formatting */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                      Text Formatting
-                    </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[10px] text-slate-400 font-medium block mb-1">Font Family</label>
-                        <select
-                          value={design.fontFamily || 'Montserrat'}
-                          onChange={e => setField('fontFamily', e.target.value)}
-                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                        >
-                          <option value="Montserrat">Montserrat</option>
-                          <option value="Arial">Arial</option>
-                          <option value="Helvetica">Helvetica</option>
-                          <option value="Times New Roman">Times New Roman</option>
-                          <option value="Courier New">Courier New</option>
-                          <option value="Oswald">Oswald</option>
-                          <option value="Roboto">Roboto</option>
-                          <option value="Inter">Inter</option>
-                        </select>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 font-medium block mb-1">Font Size</label>
-                          <input
-                            type="number"
-                            value={design.fontSize || 14}
-                            onChange={e => setField('fontSize', parseInt(e.target.value) || 14)}
-                            min="8"
-                            max="72"
-                            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 font-medium block mb-1">Font Color</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={design.fontColor || '#000000'}
-                              onChange={e => setField('fontColor', e.target.value)}
-                              className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
-                            />
-                            <input
-                              type="text"
-                              value={design.fontColor || '#000000'}
-                              onChange={e => setField('fontColor', e.target.value)}
-                              className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white uppercase font-mono"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Advanced Text Settings */}
-                      <div className="pt-3 mt-3 border-t border-slate-200 space-y-3">
-                        {/* Style Toggles */}
-                        <div className="flex gap-1.5">
-                          <button 
-                            className={`flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[9px] font-bold transition-colors ${design.copyMode === 'synchronized' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                            onClick={() => setField('copyMode', design.copyMode === 'synchronized' ? 'multi-zone' : 'synchronized')}
-                          >
-                            <FlipHorizontal size={14} className="mb-1" />
-                            {design.copyMode === 'synchronized' ? 'Mirrored' : 'Multi-Zone'}
-                          </button>
-                          
-                          <button 
-                            className={`flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-lg border text-[9px] font-bold transition-colors ${design.lanyardDesignStyle === 'repeated' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                            onClick={() => setField('lanyardDesignStyle', design.lanyardDesignStyle === 'repeated' ? 'central-logo' : 'repeated')}
-                          >
-                            <Repeat size={14} className="mb-1" />
-                            {design.lanyardDesignStyle === 'repeated' ? 'Repeated' : 'Central'}
-                          </button>
-                        </div>
-
-                        {/* Alignment */}
-                        <div>
-                          <label className="text-[10px] text-slate-400 font-medium block mb-1">Alignment</label>
-                          <div className="flex p-0.5 bg-slate-100 rounded-lg">
-                            {['Left', 'Center', 'Right'].map((align) => {
-                              const Icon = align === 'Left' ? AlignLeft : align === 'Right' ? AlignRight : AlignCenter;
-                              return (
-                                <button
-                                  key={align}
-                                  onClick={() => setField('textPosition', align)}
-                                  className={`flex-1 flex justify-center py-1.5 rounded-md transition-all ${design.textPosition === align ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                  <Icon size={14} />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Sliders / Inputs */}
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <MoveHorizontal size={14} className="text-slate-400" />
-                            <div className="flex-1">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-[9px] text-slate-400 font-bold">Spacing</span>
-                                <span className="text-[9px] text-slate-600 font-mono">{design.textSpacing || 60}px</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="10" max="200"
-                                value={design.textSpacing || 60}
-                                onChange={e => setField('textSpacing', parseInt(e.target.value))}
-                                className="w-full accent-indigo-500"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <RotateCcw size={14} className="text-slate-400" />
-                            <div className="flex-1">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-[9px] text-slate-400 font-bold">Rotation</span>
-                                <span className="text-[9px] text-slate-600 font-mono">{design.textAngle || 0}°</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="-180" max="180"
-                                value={design.textAngle || 0}
-                                onChange={e => setField('textAngle', parseInt(e.target.value))}
-                                className="w-full accent-indigo-500"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Baseline size={14} className="text-slate-400" />
-                            <div className="flex-1">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-[9px] text-slate-400 font-bold">Offset</span>
-                                <span className="text-[9px] text-slate-600 font-mono">{design.textOffset || 0}px</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="-200" max="200"
-                                value={design.textOffset || 0}
-                                onChange={e => setField('textOffset', parseInt(e.target.value))}
-                                className="w-full accent-indigo-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Logo & Image Settings */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Logo & Stripe Images</h4>
-                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                        {(design.lanyardLogos || []).length || (design.logoUrl ? 1 : 0)}/6 Added
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {/* List of Added Logos on Lanyard */}
-                      {((design.lanyardLogos || []).length > 0 || design.logoUrl) ? (
-                        <div className="space-y-2">
-                          {((design.lanyardLogos || []).length > 0 ? design.lanyardLogos : [{ id: 'single', url: design.logoUrl, name: design.logoName || 'Stripe Image' }]).map((logoItem: any, idx: number) => (
-                            <div key={logoItem.id || idx} className="p-2 bg-white rounded-lg border border-slate-200 flex items-center gap-2.5 shadow-2xs">
-                              <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                                <img src={logoItem.url} alt={logoItem.name} className="w-full h-full object-contain" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-bold text-slate-800 truncate">{logoItem.name || `Image ${idx + 1}`}</p>
-                                <button
-                                  onClick={() => setCropModalImageUrl(logoItem.url)}
-                                  className="text-[9px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5"
-                                >
-                                  <Crop size={10} />
-                                  Edit / Crop
-                                </button>
-                              </div>
-                              {/* Individual Delete Button */}
-                              <button
-                                onClick={() => handleRemoveLogoItem(logoItem.id)}
-                                className="w-6 h-6 shrink-0 bg-red-50 hover:bg-red-100 text-red-600 rounded-full flex items-center justify-center transition-all"
-                                title="Delete this image from lanyard"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          ))}
-
-                          {(design.lanyardLogos || []).length < 6 && (
-                            <button
-                              onClick={() => setLeftTab('upload')}
-                              className="w-full py-2 bg-white border border-dashed border-indigo-300 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-1"
-                            >
-                              + Add Another Image ({(design.lanyardLogos || []).length}/6)
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => setLeftTab('upload')}
-                          className="p-3 bg-white border border-dashed border-slate-300 rounded-lg text-center cursor-pointer hover:border-indigo-400 transition"
-                        >
-                          <Image size={20} className="mx-auto text-slate-300 mb-1" />
-                          <p className="text-xs font-bold text-indigo-600">No Image Added</p>
-                          <p className="text-[10px] text-slate-400">Click to open Upload Assets & click "+ Add"</p>
-                        </div>
-                      )}
-
-                      {/* Image Placement Mode (Repeated vs Single) */}
-                      <div>
-                        <span className="text-[9px] text-slate-400 font-bold block mb-1">Image Placement Mode</span>
-                        <div className="flex gap-1.5">
-                          <button
-                            className={`flex-1 py-1.5 px-2 rounded-lg border text-[9px] font-bold transition-all flex items-center justify-center gap-1 ${
-                              design.logoMode !== 'single'
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                            }`}
-                            onClick={() => {
-                              setField('logoMode', 'repeated');
-                              setField('logoRepeat', true);
-                            }}
-                          >
-                            <Repeat size={12} />
-                            Repeated (Full Strap)
-                          </button>
-                          
-                          <button
-                            className={`flex-1 py-1.5 px-2 rounded-lg border text-[9px] font-bold transition-all flex items-center justify-center gap-1 ${
-                              design.logoMode === 'single'
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                            }`}
-                            onClick={() => {
-                              setField('logoMode', 'single');
-                              setField('logoRepeat', false);
-                            }}
-                          >
-                            <Image size={12} />
-                            Single Image
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Image Spacing (when repeated) */}
-                      {design.logoMode !== 'single' && (
-                        <div className="flex items-center gap-2">
-                          <MoveHorizontal size={14} className="text-slate-400" />
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-[9px] text-slate-400 font-bold">Repeat Spacing</span>
-                              <span className="text-[9px] text-slate-600 font-mono">{design.logoSpacing || 40}px</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="10" max="200" step="5"
-                              value={design.logoSpacing || 40}
-                              onChange={e => setField('logoSpacing', parseInt(e.target.value))}
-                              className="w-full accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Logo Scale */}
-                      <div className="flex items-center gap-2">
-                        <Image size={14} className="text-slate-400" />
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-[9px] text-slate-400 font-bold">Image Scale</span>
-                            <span className="text-[9px] text-slate-600 font-mono">{design.logoScale || 1}x</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.1" max="3" step="0.05"
-                            value={design.logoScale || 1}
-                            onChange={e => setField('logoScale', parseFloat(e.target.value))}
-                            className="w-full accent-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Border Width (Increasing / Decreasing) */}
-                      <div className="flex items-center gap-2">
-                        <Maximize size={14} className="text-slate-400" />
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-[9px] text-slate-400 font-bold">Border Width</span>
-                            <span className="text-[9px] text-slate-600 font-mono">{design.logoBorderWidth || 0}px</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0" max="20" step="1"
-                            value={design.logoBorderWidth || 0}
-                            onChange={e => setField('logoBorderWidth', parseInt(e.target.value))}
-                            className="w-full accent-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Border Color */}
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[9px] text-slate-400 font-bold">Border Color</span>
-                          <span className="text-[9px] text-slate-600 font-mono uppercase">{design.logoBorderColor || '#ffffff'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <input
-                            type="color"
-                            value={design.logoBorderColor || '#ffffff'}
-                            onChange={e => setField('logoBorderColor', e.target.value)}
-                            className="w-7 h-7 rounded cursor-pointer border-0 p-0 bg-transparent shrink-0"
-                          />
-                          <input
-                            type="text"
-                            value={design.logoBorderColor || '#ffffff'}
-                            onChange={e => setField('logoBorderColor', e.target.value)}
-                            className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none uppercase font-mono"
-                          />
-                        </div>
-                        {/* Color presets */}
-                        <div className="flex gap-1.5">
-                          {['#ffffff', '#000000', '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'].map(c => (
-                            <button
-                              key={c}
-                              onClick={() => setField('logoBorderColor', c)}
-                              className="w-5 h-5 rounded-full border border-slate-300 shadow-xs hover:scale-110 transition-transform"
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Border Corner Radius */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-3.5 h-3.5 border-2 border-slate-400 rounded-xs" />
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-[9px] text-slate-400 font-bold">Border Corner Radius</span>
-                            <span className="text-[9px] text-slate-600 font-mono">{design.logoBorderRadius || 0}px</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0" max="50" step="1"
-                            value={design.logoBorderRadius || 0}
-                            onChange={e => setField('logoBorderRadius', parseInt(e.target.value))}
-                            className="w-full accent-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Image Opacity */}
-                      <div className="flex items-center gap-2">
-                        <GitCommit size={14} className="text-slate-400" />
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-[9px] text-slate-400 font-bold">Image Opacity</span>
-                            <span className="text-[9px] text-slate-600 font-mono">{Math.round((design.logoOpacity ?? 1) * 100)}%</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="10" max="100" step="5"
-                            value={Math.round((design.logoOpacity ?? 1) * 100)}
-                            onChange={e => setField('logoOpacity', parseInt(e.target.value) / 100)}
-                            className="w-full accent-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Logo Rotation & Offset */}
-                      <div className="space-y-2 pt-2 border-t border-slate-200">
-                        <div className="flex items-center gap-2">
-                          <RotateCcw size={14} className="text-slate-400" />
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-[9px] text-slate-400 font-bold">Rotation</span>
-                              <span className="text-[9px] text-slate-600 font-mono">{design.logoRotation || 0}°</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="-180" max="180"
-                              value={design.logoRotation || 0}
-                              onChange={e => setField('logoRotation', parseInt(e.target.value))}
-                              className="w-full accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <MoveHorizontal size={14} className="text-slate-400" />
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-[9px] text-slate-400 font-bold">Position Offset</span>
-                              <span className="text-[9px] text-slate-600 font-mono">{design.logoOffset || 0}px</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="-200" max="200"
-                              value={design.logoOffset || 0}
-                              onChange={e => setField('logoOffset', parseInt(e.target.value))}
-                              className="w-full accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Pattern Scale & Opacity */}
-                      <div className="pt-2 border-t border-slate-200 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Maximize size={14} className="text-slate-400" />
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-[9px] text-slate-400 font-bold">Pattern Scale</span>
-                              <span className="text-[9px] text-slate-600 font-mono">{design.patternScale || 100}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="10" max="300"
-                              value={design.patternScale || 100}
-                              onChange={e => setField('patternScale', parseInt(e.target.value))}
-                              className="w-full accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <GitCommit size={14} className="text-slate-400" />
-                          <div className="flex-1">
-                            <div className="flex justify-between mb-1">
-                              <span className="text-[9px] text-slate-400 font-bold">Pattern Opacity</span>
-                              <span className="text-[9px] text-slate-600 font-mono">{Math.round((design.strapPatternOpacity ?? 0.85) * 100)}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="10" max="100"
-                              value={Math.round((design.strapPatternOpacity ?? 0.85) * 100)}
-                              onChange={e => setField('strapPatternOpacity', parseInt(e.target.value) / 100)}
-                              className="w-full accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Info */}
-                  <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
-                    <h4 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-2">Current Config</h4>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-[10px] text-slate-500">Method</span>
-                        <span className="text-[10px] font-bold text-slate-700">{design.printingMethod}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[10px] text-slate-500">Style</span>
-                        <span className="text-[10px] font-bold text-slate-700">{design.lanyardStyle}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[10px] text-slate-500">Width</span>
-                        <span className="text-[10px] font-bold text-slate-700">{design.width}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[10px] text-slate-500">Clip</span>
-                        <span className="text-[10px] font-bold text-slate-700">{design.clipType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[10px] text-slate-500">Font</span>
-                        <span className="text-[10px] font-bold text-slate-700">{design.fontFamily}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-500">Color</span>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: design.lanyardColor?.includes('gradient') ? '#888' : design.lanyardColor }} />
-                          <span className="text-[10px] font-mono text-slate-500">
-                            {design.lanyardColor?.includes('gradient') ? 'Gradient' : design.customColorCode?.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {rightTab === 'layers' && (
-              <div className="p-4">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">Layers</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg">
-                    <div className="w-6 h-6 bg-indigo-100 rounded flex items-center justify-center">
-                      <Type size={12} className="text-indigo-600" />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-700 flex-1">Strap Text</span>
-                    <Eye size={12} className="text-slate-400" />
-                  </div>
-                  <div className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-lg">
-                    <div className="w-6 h-6 bg-slate-100 rounded flex items-center justify-center">
-                      <Palette size={12} className="text-slate-500" />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-700 flex-1">Strap Color</span>
-                    <Eye size={12} className="text-slate-400" />
-                  </div>
-                  <div className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-lg">
-                    <div className="w-6 h-6 bg-slate-100 rounded flex items-center justify-center">
-                      <Layers size={12} className="text-slate-500" />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-700 flex-1">Background</span>
-                    <Eye size={12} className="text-slate-400" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {rightTab === 'views' && (
-              <div className="p-4">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">Views</h3>
-                <div className="space-y-2">
-                  {VIEW_TABS.map(v => (
-                    <button
-                      key={v.id}
-                      onClick={() => setViewMode(v.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-                        viewMode === v.id
-                          ? 'bg-indigo-50 border-indigo-300'
-                          : 'bg-white border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewMode === v.id ? 'bg-indigo-100' : 'bg-slate-100'}`}>
-                        <MonitorSmartphone size={14} className={viewMode === v.id ? 'text-indigo-600' : 'text-slate-400'} />
-                      </div>
-                      <span className="text-xs font-bold text-slate-700">{v.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {rightTab === 'history' && (
-              <div className="p-4">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">History</h3>
-                <div className="flex flex-col items-center py-8 text-center">
-                  <History size={32} className="text-slate-200 mb-2" />
-                  <p className="text-[11px] text-slate-400">Undo/redo history will appear here</p>
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => useConfiguratorStore.getState().undo()}
-                      className="px-3 py-1.5 text-[11px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition"
-                    >
-                      ↩ Undo
-                    </button>
-                    <button
-                      onClick={() => useConfiguratorStore.getState().redo()}
-                      className="px-3 py-1.5 text-[11px] font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition"
-                    >
-                      Redo ↪
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sync Status */}
-          <div className="shrink-0 px-4 py-2.5 border-t border-slate-200 bg-slate-50">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-              {isSyncing ? (
-                <>
-                  <Loader2 size={12} className="animate-spin text-indigo-500" />
-                  <span className="text-indigo-600">Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Cloud size={12} className="text-emerald-500" />
-                  <span>Saved</span>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </main>
       {/* Crop Modal */}
