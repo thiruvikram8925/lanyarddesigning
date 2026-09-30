@@ -26,7 +26,7 @@ const Login = () => {
                 toast.error(error);
             } else {
                 toast.success('Welcome back!');
-                navigate('/dashboard');
+                navigate('/lanyard-designer');
             }
         } finally {
             setLoading(false);

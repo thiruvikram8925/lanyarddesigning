@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useConfiguratorStore } from '../store/useConfiguratorStore';
 import {
   LayoutTemplate, Palette, Type, Upload, Save, Eye, Download, ShoppingCart,
-  ZoomIn, ZoomOut, RotateCcw, Cloud, Loader2, ChevronLeft,
+  ZoomIn, ZoomOut, RotateCcw, Cloud, Loader2,
   Layers, History, MonitorSmartphone, Settings2, FolderHeart,
   AlignLeft, AlignCenter, AlignRight, FlipHorizontal, Repeat, MoveHorizontal, Baseline, Image, Maximize, GitCommit,
   Crop, Trash2
@@ -168,16 +168,8 @@ export default function LanyardDesigner() {
     <div className="flex flex-col h-[calc(100vh-7rem)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       {/* ─── Top Header Bar ─────────────────────────────────── */}
       <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-5 z-50">
-        {/* Left: Back + Title */}
+        {/* Left: Title */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-all"
-          >
-            <ChevronLeft size={16} />
-            Dashboard
-          </button>
-          <div className="w-px h-5 bg-slate-200" />
           <h1 className="text-sm font-bold text-slate-800">New Lanyard Project</h1>
           {saveMsg && (
             <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1">

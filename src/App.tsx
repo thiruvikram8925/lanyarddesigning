@@ -77,7 +77,7 @@ const App = () => (
                   
                   {/* Dashboard routes */}
                   <Route element={<DashboardLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Navigate to="/lanyard-designer" replace />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/records" element={<Records />} />
                     <Route path="/templates" element={<TemplateLibraryPage />} />
