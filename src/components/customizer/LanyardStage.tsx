@@ -778,12 +778,19 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
 
   const [stageScale, setStageScale] = useState(scale);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
-  const [isDraggableStage, setIsDraggableStage] = useState(false);
+  const [isDraggableStage, setIsDraggableStage] = useState(true);
+  const [idCardPos, setIdCardPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     setStageScale(scale);
-    setStagePos({ x: 0, y: 0 });
   }, [scale]);
+
+  useEffect(() => {
+    if (zoom === 1) {
+      setStagePos({ x: 0, y: 0 });
+      setIdCardPos(null);
+    }
+  }, [zoom]);
 
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
@@ -821,24 +828,17 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
   };
 
   const handleMouseDown = (e: any) => {
+    // If middle mouse or background drag
     if (e.evt.button === 1) {
       e.evt.preventDefault();
       const stage = e.target.getStage();
       if (stage) {
-        stage.draggable(true);
         stage.startDrag();
       }
     }
   };
 
-  const handleMouseUp = (e: any) => {
-    if (e.evt.button === 1) {
-      const stage = e.target.getStage();
-      if (stage) {
-        stage.draggable(false);
-      }
-    }
-  };
+  const handleMouseUp = () => {};
 
   const handleDragEnd = (e: any) => {
     if (e.target === e.target.getStage()) {
@@ -846,10 +846,6 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
         x: e.target.x(),
         y: e.target.y(),
       });
-    }
-    const stage = e.target.getStage();
-    if (stage) {
-      stage.draggable(false);
     }
   };
 
@@ -865,12 +861,17 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
   }, [selectedShape]);
 
   const onSelect = (e: import('konva/lib/Node').KonvaEventObject<Event>) => {
-    if (e.target === e.target.getStage()) {
+    if (
+      e.target === e.target.getStage() ||
+      e.target.name() === 'idCardGroup' ||
+      e.target.attrs?.name === 'idCardGroup' ||
+      (e.target.findAncestor && e.target.findAncestor('.idCardGroup'))
+    ) {
       setSelectedShape(null);
       setField('selectedLanyardElement', null);
       return;
     }
-    if (e.target.attrs.draggable) {
+    if (e.target.attrs.draggable && e.target.name() !== 'idCardGroup') {
       setSelectedShape(e.target as any);
     } else {
       setSelectedShape(null);
@@ -924,7 +925,7 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
     ];
 
     return (
-      <div className="w-full h-full flex justify-center items-center bg-white overflow-hidden" ref={containerRef}>
+      <div className={`w-full h-full flex justify-center items-center bg-white overflow-hidden ${isDraggableStage ? 'cursor-grab active:cursor-grabbing' : ''}`} ref={containerRef}>
         <Stage 
           width={fw} 
           height={fh} 
@@ -1093,7 +1094,7 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
   }
 
   return (
-    <div ref={containerRef} className={`flex h-full w-full items-center justify-center overflow-hidden bg-white ${isDraggableStage ? 'cursor-move' : ''}`}>
+    <div ref={containerRef} className={`flex h-full w-full items-center justify-center overflow-hidden bg-white ${isDraggableStage ? 'cursor-grab active:cursor-grabbing' : ''}`}>
       <Stage 
         ref={stageRef} 
         width={BASE_WIDTH * scale} 
@@ -1169,11 +1170,35 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
             
             {showIdCard && (
               <Group 
-                x={CX} 
-                y={TIP_Y + 20} 
+                x={idCardPos ? idCardPos.x : CX} 
+                y={idCardPos ? idCardPos.y : TIP_Y + 20} 
                 scaleX={cardScale} 
                 scaleY={cardScale} 
                 offsetX={cardW / 2}
+                draggable={true}
+                name="idCardGroup"
+                onDragStart={(e) => {
+                  e.cancelBubble = true;
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'grabbing';
+                }}
+                onDragMove={(e) => {
+                  e.cancelBubble = true;
+                }}
+                onDragEnd={(e) => {
+                  e.cancelBubble = true;
+                  setIdCardPos({ x: e.target.x(), y: e.target.y() });
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'grab';
+                }}
+                onMouseEnter={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'grab';
+                }}
+                onMouseLeave={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = isDraggableStage ? 'grab' : 'default';
+                }}
               >
                 <Rect 
                   x={cardW / 2 - 15} 
