@@ -37,7 +37,6 @@ const LEFT_TABS = [
 ] as const;
 
 type LeftTab = typeof LEFT_TABS[number]['id'];
-type ViewMode = '2d' | 'flat' | 'clip' | 'validation';
 
 export default function LanyardDesigner() {
   const navigate = useNavigate();
@@ -45,10 +44,11 @@ export default function LanyardDesigner() {
   const setField = useConfiguratorStore(s => s.setField);
   const isSyncing = useConfiguratorStore(s => s.isSyncing);
   const saveLocal = useConfiguratorStore(s => s.saveLocal);
+  const viewMode = useConfiguratorStore(s => s.viewMode);
+  const setViewMode = useConfiguratorStore(s => s.setViewMode);
 
   const [leftTab, setLeftTab] = useState<LeftTab>('elements');
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('2d');
   const [zoom, setZoom] = useState(1);
   const [saveMsg, setSaveMsg] = useState('');
   const [cropModalImageUrl, setCropModalImageUrl] = useState<string | null>(null);
@@ -157,13 +157,6 @@ export default function LanyardDesigner() {
   const handleZoomOut = () => setZoom(z => Math.max(z / 1.15, 0.2));
   const handleZoomReset = () => setZoom(1);
 
-  const VIEW_TABS: { id: ViewMode; label: string; dot?: boolean }[] = [
-    { id: '2d', label: '2D View' },
-    { id: 'flat', label: 'Flat Layout' },
-    { id: 'clip', label: 'Clip & Hardware' },
-    { id: 'validation', label: 'Validation', dot: true },
-  ];
-
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       {/* ─── Top Header Bar ─────────────────────────────────── */}
@@ -177,28 +170,6 @@ export default function LanyardDesigner() {
               {saveMsg}
             </span>
           )}
-        </div>
-
-        {/* Center: View Mode Tabs */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-1">
-          {VIEW_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setViewMode(tab.id)}
-              className={`relative px-4 py-1.5 text-[11px] font-bold rounded-md transition-all ${
-                viewMode === tab.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {tab.label}
-              {tab.dot && (
-                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${
-                  viewMode === tab.id ? 'bg-amber-300' : 'bg-amber-500'
-                }`} />
-              )}
-            </button>
-          ))}
         </div>
 
         {/* Right: Actions */}
@@ -365,12 +336,47 @@ export default function LanyardDesigner() {
               {/* Lanyard label */}
               <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
                 <span className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg shadow-sm">
-                  🎗 Lanyard
+                  🎗 2D View
                 </span>
               </div>
               {/* Canvas */}
               <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
                 <LanyardStage stageRef={stageRef} currentStep={2} zoom={zoom} />
+              </div>
+              {/* Zoom controls overlay */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur border border-slate-200 rounded-xl shadow-sm z-10">
+                <button onClick={handleZoomOut} className="text-slate-400 hover:text-slate-600 transition">
+                  <ZoomOut size={16} />
+                </button>
+                <input
+                  type="range"
+                  min={20}
+                  max={200}
+                  value={zoom * 100}
+                  onChange={e => setZoom(Number(e.target.value) / 100)}
+                  className="w-32 h-1 bg-slate-200 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-indigo-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
+                />
+                <button onClick={handleZoomIn} className="text-slate-400 hover:text-slate-600 transition">
+                  <ZoomIn size={16} />
+                </button>
+                <div className="w-px h-4 bg-slate-200" />
+                <button onClick={handleZoomReset} className="text-slate-400 hover:text-slate-600 transition" title="Reset zoom">
+                  <RotateCcw size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+          {viewMode === '3d' && (
+            <div className="flex-1 flex items-center justify-center overflow-hidden relative">
+              {/* 3D Mockup label */}
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+                <span className="px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg shadow-sm">
+                  🪪 3D View
+                </span>
+              </div>
+              {/* Canvas */}
+              <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+                <LanyardStage stageRef={stageRef} currentStep={2} zoom={zoom} showIdCard={true} />
               </div>
               {/* Zoom controls overlay */}
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur border border-slate-200 rounded-xl shadow-sm z-10">

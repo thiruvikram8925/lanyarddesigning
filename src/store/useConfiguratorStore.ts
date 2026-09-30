@@ -340,8 +340,12 @@ function updateAtPath<T>(target: T, path: string, value: unknown): T {
   return next;
 }
 
+export type LanyardViewMode = '2d' | '3d' | 'flat' | 'clip' | 'validation';
+
 interface ConfiguratorStore {
   design: Design;
+  viewMode: LanyardViewMode;
+  setViewMode: (mode: LanyardViewMode) => void;
   past: Design[];
   future: Design[];
   uploads: {
@@ -367,6 +371,8 @@ interface ConfiguratorStore {
 
 export const useConfiguratorStore = create<ConfiguratorStore>((set, get) => ({
   design: clone(defaultDesign),
+  viewMode: '2d',
+  setViewMode: (viewMode) => set({ viewMode }),
   past: [],
   future: [],
   isSyncing: false,

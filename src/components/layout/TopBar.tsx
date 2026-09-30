@@ -1,19 +1,33 @@
-import { Search, LogOut, Bell } from 'lucide-react';
+import { Search, LogOut, Bell, Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { projectService } from '@/services/dataService';
 import { Project } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useConfiguratorStore, LanyardViewMode } from '@/store/useConfiguratorStore';
+
+const VIEW_TABS: { id: LanyardViewMode; label: string; dot?: boolean }[] = [
+    { id: '2d', label: '2D View' },
+    { id: '3d', label: '3D View' },
+    { id: 'flat', label: 'Flat Layout' },
+    { id: 'clip', label: 'Clip & Hardware' },
+    { id: 'validation', label: 'Validation', dot: true },
+];
 
 interface TopBarProps {
-    sidebarCollapsed: boolean;
+    sidebarOpen: boolean;
+    onToggleSidebar: () => void;
 }
 
-const TopBar = ({ sidebarCollapsed }: TopBarProps) => {
+const TopBar = ({ sidebarOpen, onToggleSidebar }: TopBarProps) => {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const viewMode = useConfiguratorStore(s => s.viewMode);
+    const setViewMode = useConfiguratorStore(s => s.setViewMode);
+    const isLanyardDesigner = location.pathname === '/lanyard-designer' || location.pathname.startsWith('/lanyard-designer') || location.pathname === '/dashboard';
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [notifications, setNotifications] = useState<Project[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -78,12 +92,52 @@ const TopBar = ({ sidebarCollapsed }: TopBarProps) => {
     };
 
     return (
-        <header
-            className="fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-6 transition-all duration-300 ease-in-out"
-            style={{ left: sidebarCollapsed ? 0 : 260 }}
-        >
-            {/* Left side empty for spacing */}
-            <div className="flex-1"></div>
+        <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-4 sm:px-6">
+            {/* Left side: Hamburger menu (☰) positioned on the far left of the GOTEK logo */}
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={onToggleSidebar}
+                    title={sidebarOpen ? "Close navigation" : "Open navigation"}
+                    className="p-2 -ml-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
+                    aria-label="Toggle navigation menu"
+                >
+                    {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <img
+                        src="/gotek-logo.png"
+                        alt="GOTEK Logo"
+                        className="h-12 w-auto max-w-[220px] object-contain flex-shrink-0"
+                    />
+                </div>
+            </div>
+
+            {/* Center: Navigation Tabs positioned above main editing workspace */}
+            {isLanyardDesigner && (
+                <div className="flex items-center justify-center flex-1 mx-2 sm:mx-4 overflow-hidden">
+                    <div className="flex items-center bg-slate-100 rounded-lg p-1 overflow-x-auto scrollbar-none">
+                        {VIEW_TABS.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setViewMode(tab.id)}
+                                className={`relative px-4 py-1.5 text-[11px] font-bold rounded-md transition-all whitespace-nowrap cursor-pointer ${
+                                    viewMode === tab.id
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                {tab.label}
+                                {tab.dot && (
+                                    <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${
+                                        viewMode === tab.id ? 'bg-amber-300' : 'bg-amber-500'
+                                    }`} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Right side */}
             <div className="flex items-center gap-4">
                 {/* Notifications for Super Admins */}
