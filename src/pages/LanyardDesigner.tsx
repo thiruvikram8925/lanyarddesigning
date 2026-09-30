@@ -158,7 +158,7 @@ export default function LanyardDesigner() {
   const handleZoomReset = () => setZoom(1);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-5.15rem)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       {/* ─── Top Header Bar ─────────────────────────────────── */}
       <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-5 z-20">
         {/* Left: Title */}
