@@ -1,37 +1,9 @@
 import { useState } from 'react';
-import { useConfiguratorStore } from '../../store/useConfiguratorStore';
 import LanyardStage from '../customizer/LanyardStage';
-import { 
-  Ruler, Eye, Download, Save, ZoomIn, ZoomOut, RotateCcw, 
-  Sparkles, Layers, ShieldAlert, CheckCircle2, Type, Image as ImageIcon
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Ruler, ZoomIn, ZoomOut, RotateCcw, Sparkles } from 'lucide-react';
 
 export default function FlatLayoutView() {
-  const design = useConfiguratorStore(s => s.design);
-  const setField = useConfiguratorStore(s => s.setField);
   const [zoom, setZoom] = useState(1);
-  const widthMm = (design.width as string) || '20mm';
-  const showBleed = design.showBleed !== false;
-
-  const handleToggleBleed = () => {
-    setField('showBleed', !showBleed);
-    toast.info(!showBleed ? 'Bleed guides enabled (23.1 mm)' : 'Bleed guides hidden');
-  };
-
-  const handleExportFlatDesign = () => {
-    const stageCanvas = document.querySelector('.konvajs-content canvas') as HTMLCanvasElement;
-    if (stageCanvas) {
-      const dataUrl = stageCanvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `20mm_Lanyard_Flat_Design_Template_${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast.success('Flat design template exported successfully!');
-    } else {
-      toast.error('Unable to capture canvas for export.');
-    }
-  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-hidden">
@@ -56,27 +28,8 @@ export default function FlatLayoutView() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Zoom Preset Controls */}
+          {/* Zoom Controls */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-            <button
-              onClick={() => setZoom(1)}
-              className={`px-2 py-1 text-[11px] font-bold rounded transition-all ${
-                zoom === 1 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-white/60'
-              }`}
-              title="Center Fit View"
-            >
-              Fit Center
-            </button>
-            <button
-              onClick={() => setZoom(1.4)}
-              className={`px-2 py-1 text-[11px] font-bold rounded transition-all ${
-                zoom === 1.4 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-white/60'
-              }`}
-              title="Zoom to See Details"
-            >
-              High Detail (140%)
-            </button>
-            <div className="w-[1px] h-3.5 bg-slate-300 mx-0.5" />
             <button
               onClick={() => setZoom(z => Math.max(0.5, parseFloat((z - 0.1).toFixed(2))))}
               className="p-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded transition-colors"
@@ -102,28 +55,6 @@ export default function FlatLayoutView() {
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {/* Bleed Toggle */}
-          <button
-            onClick={handleToggleBleed}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-              showBleed 
-                ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100' 
-                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-            <span>{showBleed ? 'Bleed Guides On (23.1mm)' : 'Show Bleed Guides'}</span>
-          </button>
-
-          {/* Export Flat Design */}
-          <button
-            onClick={handleExportFlatDesign}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export Flat Template</span>
-          </button>
         </div>
       </div>
 
