@@ -160,7 +160,7 @@ export default function LanyardDesigner() {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       {/* ─── Top Header Bar ─────────────────────────────────── */}
-      <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-5 z-50">
+      <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-5 z-20">
         {/* Left: Title */}
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-bold text-slate-800">New Lanyard Project</h1>

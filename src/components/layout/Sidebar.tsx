@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ribbon } from 'lucide-react';
+import { Ribbon, FolderOpen, FileSpreadsheet, LayoutDashboard, CheckCircle, Palette, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -19,7 +19,23 @@ const navigation: NavGroup[] = [
     {
         title: 'MAIN',
         items: [
-            { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ALL_ROLES }
+            { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ALL_ROLES },
+            { label: 'Projects', icon: FolderOpen, path: '/projects', allowedRoles: ALL_ROLES },
+            { label: 'Records', icon: FileSpreadsheet, path: '/records', allowedRoles: ALL_ROLES },
+        ]
+    },
+    {
+        title: 'TOOLS & LIBRARY',
+        items: [
+            { label: 'Template Library', icon: LayoutDashboard, path: '/templates', allowedRoles: ALL_ROLES },
+            { label: 'Cropping Hub', icon: CheckCircle, path: '/validation', allowedRoles: ALL_ROLES },
+            { label: 'ID Customizer', icon: Palette, path: '/customizer', allowedRoles: ALL_ROLES },
+        ]
+    },
+    {
+        title: 'SYSTEM',
+        items: [
+            { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: ALL_ROLES },
         ]
     }
 ];
@@ -76,7 +92,7 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         onClick={onClose}
-                        className="fixed inset-0 top-16 bg-black/20 backdrop-blur-[1px] z-[45]"
+                        className="fixed inset-0 top-16 bg-black/25 backdrop-blur-[2px] z-[65]"
                     />
                 )}
             </AnimatePresence>
@@ -84,9 +100,9 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
             {/* Slide-out Sidebar Drawer */}
             <motion.aside
                 initial={false}
-                animate={{ x: open ? 0 : -280 }}
+                animate={{ x: open ? 0 : -300 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-[260px] bg-white border-r border-gray-200 z-[50] flex flex-col shadow-xl"
+                className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-[260px] bg-white border-r border-gray-200 z-[70] flex flex-col shadow-2xl"
             >
                 {/* Navigation items */}
                 <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-6 custom-scrollbar">
