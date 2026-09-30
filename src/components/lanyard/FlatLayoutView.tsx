@@ -1,9 +1,19 @@
 import { useState } from 'react';
 import LanyardStage from '../customizer/LanyardStage';
-import { Ruler, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Ruler, ZoomIn, ZoomOut, RotateCcw, ChevronDown } from 'lucide-react';
+import { useConfiguratorStore } from '../../store/useConfiguratorStore';
+
+const WIDTH_OPTIONS = [38, 36, 34, 32, 30, 28] as const;
 
 export default function FlatLayoutView() {
   const [zoom, setZoom] = useState(1);
+  const design = useConfiguratorStore((s) => s.design);
+  const setField = useConfiguratorStore((s) => s.setField);
+  const selectedWidth = design.flatLength || 38;
+
+  const handleWidthChange = (val: number) => {
+    setField('flatLength', val);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-100 overflow-hidden">
@@ -13,16 +23,25 @@ export default function FlatLayoutView() {
           <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
             <Ruler className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">20 mm Adult Lanyard Flat Editor</h2>
-              <span className="px-2.5 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
-                20 mm Finish • 23.1 mm Bleed
-              </span>
+          <div className="flex items-center gap-2">
+            <label htmlFor="flat-width-select" className="text-xs font-bold text-slate-700">
+              Width:
+            </label>
+            <div className="relative">
+              <select
+                id="flat-width-select"
+                value={selectedWidth}
+                onChange={(e) => handleWidthChange(Number(e.target.value))}
+                className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-300 hover:border-slate-400 text-slate-900 text-xs font-bold rounded-lg pl-3 pr-8 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all"
+              >
+                {WIDTH_OPTIONS.map((w) => (
+                  <option key={w} value={w}>
+                    {w}”
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              38 Inches Total Length • Left Ext (2") • Left Side (14") • Neck (4") • Right Side Flipped (14") • Right Ext (4")
-            </p>
           </div>
         </div>
 
@@ -61,7 +80,7 @@ export default function FlatLayoutView() {
 
       {/* Main Flat Stage Area */}
       <div className="flex-1 flex items-center justify-center p-4 relative overflow-auto">
-        <LanyardStage isFlatMode={true} currentStep={2} zoom={zoom} />
+        <LanyardStage isFlatMode={true} currentStep={2} zoom={zoom} flatLength={selectedWidth} />
       </div>
     </div>
   );

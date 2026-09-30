@@ -83,6 +83,7 @@ export interface Design {
   printingMethod: string;
   lanyardStyle: string;
   width: string;
+  flatLength?: number;
   lanyardColor: string;
   customColorCode: string;
   pantone: string;
@@ -198,6 +199,7 @@ const defaultDesign: Design = {
   printingMethod: 'Sublimated',
   lanyardStyle: 'Single Ended',
   width: '20mm',
+  flatLength: 38,
   lanyardColor: '#ffffff',
   customColorCode: '#ffffff',
   pantone: 'White',

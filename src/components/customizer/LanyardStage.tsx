@@ -681,7 +681,7 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
   );
 }
 
-export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCard = false, isFlatMode = false }: { zoom?: number; stageRef?: React.RefObject<unknown>; currentStep?: number; showIdCard?: boolean; isFlatMode?: boolean }) {
+export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCard = false, isFlatMode = false, flatLength }: { zoom?: number; stageRef?: React.RefObject<unknown>; currentStep?: number; showIdCard?: boolean; isFlatMode?: boolean; flatLength?: number }) {
   const showControls = currentStep === 2;
   const design = useConfiguratorStore((s: Record<string, unknown>) => s.design as Record<string, unknown>);
   const setField = useConfiguratorStore((s: Record<string, unknown>) => s.setField as Function);
@@ -886,17 +886,24 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
     const finishMm = parseInt(mmStr.replace('mm', ''), 10) || 20;
     const bleedMm = parseFloat((finishMm * 1.155).toFixed(1)); // 23.1 mm for 20mm finish
 
-    // Responsive 38-inch horizontal strip layout (Zoomed & Centered)
-    const STRAP_LEN = Math.min(800, Math.max(600, fw - 160));
+    // Responsive horizontal strip layout (Zoomed & Centered) based on selected width/length (28"-38")
+    const totalLen = flatLength || (design.flatLength as number) || 38;
+    const baseStrapLen = Math.min(800, Math.max(600, fw - 160));
+    const STRAP_LEN = baseStrapLen * (totalLen / 38);
     const startX = (fw - STRAP_LEN) / 2 + 40; // Shift right to make room for badges on left
 
-    // 38 inches total breakdown (2" left ext, 14" left side, 4" neck, 14" right side, 4" right ext)
+    // Total breakdown: Left Ext (2"), Neck (4"), Right Ext (4"), Left & Right sides split remainder
+    const leftExt = 2;
+    const neck = 4;
+    const rightExt = 4;
+    const sideLen = Math.max(0, (totalLen - leftExt - neck - rightExt) / 2);
+
     const x0 = startX;
-    const x1 = startX + STRAP_LEN * (2 / 38);   // End of 2" Left Extension
-    const x2 = x1 + STRAP_LEN * (14 / 38);      // End of 14" Left Side Area / Start of Neck Area
-    const x3 = x2 + STRAP_LEN * (4 / 38);       // End of 4" Neck Area / Start of Right Side Area
-    const x4 = x3 + STRAP_LEN * (14 / 38);      // End of 14" Right Side Area / Start of 4" Right Extension
-    const x5 = x4 + STRAP_LEN * (4 / 38);       // End of 4" Right Extension
+    const x1 = startX + STRAP_LEN * (leftExt / totalLen);
+    const x2 = x1 + STRAP_LEN * (sideLen / totalLen);
+    const x3 = x2 + STRAP_LEN * (neck / totalLen);
+    const x4 = x3 + STRAP_LEN * (sideLen / totalLen);
+    const x5 = x4 + STRAP_LEN * (rightExt / totalLen);
 
     const finishH = Math.max(34, Math.min(52, (finishMm / 20) * 42)); // High-detail enlarged strap height
     const bleedH = finishH * (bleedMm / finishMm); // 23.1mm bleed scale height
