@@ -1,12 +1,18 @@
 import { useConfiguratorStore } from '../../store/useConfiguratorStore';
-import { clipTypes, accessoryOptions, widths } from '../../data/options';
-import { Link2, Wrench, Ruler } from 'lucide-react';
+import { clipTypes, accessoryOptions, widths, printingMethods } from '../../data/options';
+import { Link2, Wrench, Ruler, Printer, Scissors, Palette } from 'lucide-react';
 
 const CLIP_EMOJIS: Record<string, string> = {
   'Metal Hook': '🪝',
   'Plastic Hook': '🔗',
   'Crocodile Clip': '🐊',
   'Ski Reel': '🎿',
+};
+
+const PRINTING_ICONS: Record<string, React.ReactNode> = {
+  'Screen Printed': <Printer size={20} className="text-slate-600" />,
+  'Woven': <Scissors size={20} className="text-slate-600" />,
+  'Sublimated': <Palette size={20} className="text-indigo-600" />,
 };
 
 export default function ClipHardwareView() {
@@ -30,7 +36,42 @@ export default function ClipHardwareView() {
             <Wrench size={20} className="text-indigo-500" />
             Clip & Hardware Configuration
           </h2>
-          <p className="text-xs text-slate-400 mt-1">Select the physical hardware components for your lanyard</p>
+          <p className="text-xs text-slate-400 mt-1">Select the physical hardware and printing components for your lanyard</p>
+        </div>
+
+        {/* Printing Method */}
+        <div className="mb-8">
+          <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+            <Printer size={16} className="text-indigo-500" />
+            Printing Method
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            {printingMethods.map(m => {
+              const isActive = design.printingMethod === m.label;
+              return (
+                <button
+                  key={m.label}
+                  onClick={() => setField('printingMethod', m.label)}
+                  className={`flex flex-col p-4 rounded-xl border-2 transition-all text-left ${
+                    isActive
+                      ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-200 shadow-sm'
+                      : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isActive ? 'bg-indigo-100' : 'bg-slate-100'}`}>
+                      {PRINTING_ICONS[m.label] || <Palette size={18} />}
+                    </div>
+                    {m.price > 0 && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded">+${m.price}</span>
+                    )}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">{m.label}</span>
+                  <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{m.description}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Clip Type */}

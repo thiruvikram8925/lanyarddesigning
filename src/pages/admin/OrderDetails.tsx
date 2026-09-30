@@ -36,9 +36,20 @@ const OrderDetails = () => {
       try {
         if (!id) return;
         setIsLoading(true);
-        const allOrders = await orderService.getAll();
-        const currentOrder = allOrders.find((o: any) => o._id === id || o.id === id);
+        let currentOrder: any = null;
+        try {
+          currentOrder = await orderService.getById(id);
+        } catch (e) {
+          const allOrders = await orderService.getAll();
+          currentOrder = Array.isArray(allOrders) ? allOrders.find((o: any) => o._id === id || o.id === id) : null;
+        }
         
+        if (!currentOrder) {
+          // Final fallback try finding in getAll
+          const allOrders = await orderService.getAll();
+          currentOrder = Array.isArray(allOrders) ? allOrders.find((o: any) => o._id === id || o.id === id) : null;
+        }
+
         if (!currentOrder) {
           toast.error("Order not found");
           setIsLoading(false);
@@ -46,20 +57,26 @@ const OrderDetails = () => {
         }
 
         setOrder(currentOrder);
-        const projectId = currentOrder.projectId || currentOrder.project?.id;
+        const projectId = currentOrder.projectId || currentOrder.project?.id || currentOrder.id?.replace('order-', '');
 
         if (projectId) {
-          const projectData = await projectService.getById(projectId);
-          setProject(projectData);
+          try {
+            const projectData = await projectService.getById(projectId);
+            setProject(projectData);
 
-          if (projectData && projectData.design_state) {
-            try {
-              const parsedDesign = JSON.parse(projectData.design_state);
-              setDesign(parsedDesign);
-              useConfiguratorStore.setState({ design: parsedDesign });
-            } catch (e) {
-              console.error("Failed to parse design state", e);
+            if (projectData && projectData.design_state) {
+              try {
+                const parsedDesign = typeof projectData.design_state === 'string'
+                  ? JSON.parse(projectData.design_state)
+                  : projectData.design_state;
+                setDesign(parsedDesign);
+                useConfiguratorStore.setState({ design: parsedDesign });
+              } catch (e) {
+                console.error("Failed to parse design state", e);
+              }
             }
+          } catch (err) {
+            console.warn("Project details load warning:", err);
           }
         }
       } catch (error) {

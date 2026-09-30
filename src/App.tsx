@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { OrderProvider } from "./hooks/useOrder";
 import { TrialGuard } from "./components/auth/TrialGuard";
+import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense } from "react";
 
 // Layout
@@ -62,7 +63,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback />}>
                 <TrialGuard>
@@ -76,7 +77,7 @@ const App = () => (
                   
                   {/* Dashboard routes */}
                   <Route element={<DashboardLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Navigate to="/lanyard-designer" replace />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/records" element={<Records />} />
                     <Route path="/templates" element={<TemplateLibraryPage />} />
@@ -92,12 +93,41 @@ const App = () => (
                   </Route>
 
                   {/* Admin routes */}
-                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                  <Route path="/admin/schools" element={<SchoolManagement />} />
-                  <Route path="/admin/orders" element={<OrderManagement />} />
-                  <Route path="/admin/orders/:id" element={<OrderDetails />} />
-                  <Route path="/admin/advertisements" element={<AdvertisementManagement />} />
-                  <Route path="/admin/templates" element={<AdminTemplateLibrary />} />
+                  <Route path="/admin/dashboard" element={
+                    <RequireRole roles={['super-admin', 'ultra-super-admin']}>
+                      <AdminDashboard />
+                    </RequireRole>
+                  } />
+                  <Route path="/admin/schools" element={
+                    <RequireRole roles={['super-admin', 'ultra-super-admin']}>
+                      <SchoolManagement />
+                    </RequireRole>
+                  } />
+                  <Route path="/orders" element={
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
+                      <OrderManagement />
+                    </RequireRole>
+                  } />
+                  <Route path="/admin/orders" element={
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
+                      <OrderManagement />
+                    </RequireRole>
+                  } />
+                  <Route path="/admin/orders/:id" element={
+                    <RequireRole roles={['user', 'admin', 'super-admin', 'ultra-super-admin']}>
+                      <OrderDetails />
+                    </RequireRole>
+                  } />
+                  <Route path="/admin/advertisements" element={
+                    <RequireRole roles={['super-admin', 'ultra-super-admin']}>
+                      <AdvertisementManagement />
+                    </RequireRole>
+                  } />
+                  <Route path="/admin/templates" element={
+                    <RequireRole roles={['super-admin', 'ultra-super-admin']}>
+                      <AdminTemplateLibrary />
+                    </RequireRole>
+                  } />
                   
                   <Route path="/404" element={<NotFound />} />
                   <Route path="*" element={<Navigate to="/404" replace />} />

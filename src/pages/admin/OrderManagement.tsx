@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { orderService } from "@/services/dataService";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, MoreHorizontal, LucideIcon, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Search, Filter, Eye, CheckCircle, Clock, Package, Truck, AlertCircle, LucideIcon, ArrowLeft, ShieldCheck, UserCheck, Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+
+import LanyardOrderDetailsModal from "@/components/admin/LanyardOrderDetailsModal";
 
 interface OrderWithDetails {
   _id: string;
@@ -22,6 +25,7 @@ interface OrderWithDetails {
   status: string;
   createdAt: string;
   student_count: number;
+  created_by?: string;
 }
 
 const OrderManagement = () => {
@@ -32,8 +36,63 @@ const OrderManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [adminFilter, setAdminFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedOrderModal, setSelectedOrderModal] = useState<OrderWithDetails | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+  const [newOrderData, setNewOrderData] = useState({
+    projectName: '',
+    organization: '',
+    studentCount: 100,
+    status: 'submitted'
+  });
+
+  const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'ultra-super-admin';
+
+  const handleCreateOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrderData.projectName.trim()) {
+      toast.error('Please enter a project name');
+      return;
+    }
+    setIsSubmittingNew(true);
+    try {
+      const orderId = `order-${Date.now()}`;
+      await orderService.create({
+        id: orderId,
+        projectId: orderId.replace('order-', ''),
+        status: newOrderData.status,
+        studentCount: Number(newOrderData.studentCount),
+        projectName: newOrderData.projectName,
+        organization: newOrderData.organization || 'GOTEK'
+      });
+
+      toast.success('New Order created successfully!');
+      setIsCreateModalOpen(false);
+      setNewOrderData({ projectName: '', organization: '', studentCount: 100, status: 'submitted' });
+
+      // Refresh orders
+      const ordersData = await orderService.getAll();
+      const list = Array.isArray(ordersData) ? ordersData : [];
+      const ordersWithDetails = list.map((order: Record<string, unknown>) => ({
+        ...order,
+        _id: (order._id || order.id || '') as string,
+        student_count: (order.studentCount || order.student_count || 100) as number,
+        creator: (order.creator || {}) as Record<string, unknown>,
+        project: (order.project || {}) as Record<string, unknown>,
+        template: (order.template || {}) as Record<string, unknown>,
+      })) as OrderWithDetails[];
+
+      setOrders(ordersWithDetails);
+    } catch (err) {
+      console.error('Error creating order:', err);
+      toast.error('Failed to create order');
+    } finally {
+      setIsSubmittingNew(false);
+    }
+  };
 
   const statusConfig: Record<string, { label: string; color: string; icon: LucideIcon }> = {
     draft: { label: "Draft", color: "bg-gray-500", icon: Clock },
@@ -55,8 +114,12 @@ const OrderManagement = () => {
 
         const ordersWithDetails = list.map((order: Record<string, unknown>) => ({
           ...order,
-          student_count: order.studentCount || 0,
-        }));
+          _id: (order._id || order.id || '') as string,
+          student_count: (order.studentCount || order.student_count || 100) as number,
+          creator: (order.creator || {}) as Record<string, unknown>,
+          project: (order.project || {}) as Record<string, unknown>,
+          template: (order.template || {}) as Record<string, unknown>,
+        })) as OrderWithDetails[];
 
         setOrders(ordersWithDetails);
         setFilteredOrders(ordersWithDetails);
@@ -71,14 +134,60 @@ const OrderManagement = () => {
     fetchOrders();
   }, [user]);
 
+  // Extract unique admins for Super Admin filter
+  const uniqueAdmins = Array.from(
+    new Map(
+      orders
+        .map(o => {
+          const adminId = (o.creator?.id || o.created_by || 'Unknown') as string;
+          const rawEmail = (o.creator?.email || '') as string;
+          const rawName = (o.creator?.name || '') as string;
+          const adminName = (rawName && rawName !== 'Admin') ? rawName : (rawEmail ? rawEmail.split('@')[0] : 'Admin');
+          return [adminId, { id: adminId, name: adminName, email: rawEmail }];
+        })
+    ).values()
+  );
+
   useEffect(() => {
     let filtered = [...orders];
 
-    // Apply search filter
+    // For regular admins, strictly restrict to orders where created_by or creator.id matches user.id or user.email
+    if (!isSuperAdmin && user) {
+      filtered = filtered.filter(order => {
+        const creatorId = order.creator?.id || order.created_by;
+        const creatorEmail = order.creator?.email;
+        return creatorId === user.id || creatorId === user._id || (creatorEmail && creatorEmail.toLowerCase() === user.email.toLowerCase());
+      });
+    }
+
+    // Apply search filter (order ID, admin ID, creator name/email, project name)
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order._id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(order => {
+        const orderId = (order._id || '').toLowerCase();
+        const adminId = ((order.creator?.id as string) || (order.created_by as string) || '').toLowerCase();
+        const creatorName = ((order.creator?.name as string) || '').toLowerCase();
+        const creatorEmail = ((order.creator?.email as string) || '').toLowerCase();
+        const projectName = ((order.project?.name as string) || '').toLowerCase();
+        const org = ((order.project?.organization as string) || '').toLowerCase();
+
+        return (
+          orderId.includes(term) ||
+          adminId.includes(term) ||
+          creatorName.includes(term) ||
+          creatorEmail.includes(term) ||
+          projectName.includes(term) ||
+          org.includes(term)
+        );
+      });
+    }
+
+    // Apply admin filter for Super Admin
+    if (isSuperAdmin && adminFilter !== "all") {
+      filtered = filtered.filter(order => {
+        const creatorId = order.creator?.id || order.created_by;
+        return creatorId === adminFilter;
+      });
     }
 
     // Apply status filter
@@ -114,7 +223,7 @@ const OrderManagement = () => {
     });
 
     setFilteredOrders(filtered);
-  }, [orders, searchTerm, statusFilter, sortBy, sortOrder]);
+  }, [orders, searchTerm, statusFilter, adminFilter, sortBy, sortOrder, isSuperAdmin, user]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
@@ -142,7 +251,7 @@ const OrderManagement = () => {
 
     const Icon = config.icon;
     return (
-      <Badge className={`${config.color} text-white`}>
+      <Badge className={`${config.color} text-white font-bold`}>
         <Icon className="w-3 h-3 mr-1" />
         {config.label}
       </Badge>
@@ -170,36 +279,85 @@ const OrderManagement = () => {
       <AdminHeader />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
           </Button>
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" /> Create New Order
+          </Button>
         </div>
-        <Card className="mb-6">
+        <Card className="mb-6 border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-2xl">Order Management</CardTitle>
-            <CardDescription>
-              Monitor and manage all orders from schools
-            </CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-2xl">
+                    {isSuperAdmin ? "Order Management (All Admin Orders)" : "My Admin Orders"}
+                  </CardTitle>
+                  {isSuperAdmin ? (
+                    <Badge className="bg-amber-600 text-white font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Super Admin View
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-indigo-600 text-white font-bold flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5" /> Admin View
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription className="mt-1">
+                  {isSuperAdmin
+                    ? "Viewing all lanyard orders placed by all admins across the platform with their Admin IDs."
+                    : `Viewing orders placed under your Admin Account (Admin ID: ${user?.id || user?._id || 'N/A'})`
+                  }
+                </CardDescription>
+              </div>
+
+              {!isSuperAdmin && user && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2 text-xs">
+                  <span className="text-indigo-500 font-extrabold block">Your Admin ID</span>
+                  <span className="font-mono font-bold text-indigo-900">{user.id || user._id}</span>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by order ID..."
+                  placeholder={isSuperAdmin ? "Search by Order ID, Admin ID, Admin Name/Email, Project..." : "Search by Order ID or Project..."}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
                 />
               </div>
               
+              {isSuperAdmin && (
+                <Select value={adminFilter} onValueChange={setAdminFilter}>
+                  <SelectTrigger className="w-full md:w-[220px]">
+                    <SelectValue placeholder="Filter by Admin ID" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Admins</SelectItem>
+                    {uniqueAdmins.map(admin => (
+                      <SelectItem key={admin.id} value={admin.id}>
+                        {admin.name} ({admin.id.slice(0, 8)}...)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
+                <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Orders</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
                   <SelectItem value="uploaded">Uploaded</SelectItem>
@@ -210,7 +368,7 @@ const OrderManagement = () => {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full md:w-[180px]">
+                <SelectTrigger className="w-full md:w-[160px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,112 +386,134 @@ const OrderManagement = () => {
               </Button>
             </div>
 
-            <div className="text-sm text-muted-foreground mb-4">
-              Showing {filteredOrders.length} of {orders.length} orders
+            <div className="text-sm text-muted-foreground mb-2 flex items-center justify-between">
+              <span>Showing {filteredOrders.length} of {orders.length} orders</span>
+              {isSuperAdmin && (
+                <span className="text-xs text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                  Super Admin: {uniqueAdmins.length} Admins Active
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Order ID</TableHead>
-                    <TableHead>Project Name</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Template</TableHead>
-                    <TableHead>Students</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Order ID</TableHead>
+                    {isSuperAdmin && <TableHead className="font-extrabold text-slate-700">Admin ID / Creator</TableHead>}
+                    <TableHead className="font-extrabold text-slate-700">Project Name</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Organization</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Template</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Quantity</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Status</TableHead>
+                    <TableHead className="font-extrabold text-slate-700">Created</TableHead>
+                    <TableHead className="font-extrabold text-slate-700 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow 
-                      key={order._id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/admin/orders/${order._id || (order as any).id}`)}
-                    >
-                      <TableCell>
-                        <div className="font-mono text-sm">
-                          {order._id.slice(0, 8)}...
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm font-medium">
-                          {(order.project as any)?.name || "Unnamed"}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm">
-                          {(order.project as any)?.organization || "Unknown"}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm">
-                          {(order.template as any)?.name || "Default"}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm font-medium">
-                          {order.student_count}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {getStatusBadge(order.status)}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm">
-                          {formatDateLocal(order.createdAt)}
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const projectId = (order as any).projectId;
-                              if (projectId) {
-                                navigate(`/customizer?orderId=${projectId}`);
-                              } else {
-                                toast.error('No project associated with this order.');
-                              }
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          
-                          <Select
-                            value={order.status}
-                            onValueChange={(newStatus) => handleStatusUpdate(order._id, newStatus)}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="submitted">Submitted</SelectItem>
-                              <SelectItem value="uploaded">Uploaded</SelectItem>
-                              <SelectItem value="validated">Validated</SelectItem>
-                              <SelectItem value="generated">Generated</SelectItem>
-                              <SelectItem value="exported">Exported</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredOrders.map((order) => {
+                    const creatorId = (order.creator?.id || order.created_by || 'N/A') as string;
+                    const creatorEmail = (order.creator?.email || 'N/A') as string;
+                    const rawName = (order.creator?.name || '') as string;
+                    const creatorName = (rawName && rawName !== 'Admin') ? rawName : (creatorEmail !== 'N/A' ? creatorEmail.split('@')[0] : 'Admin');
+                    const creatorOrg = (order.creator?.organization || 'GoTek') as string;
+
+                    return (
+                      <TableRow 
+                        key={order._id}
+                        className="cursor-pointer hover:bg-indigo-50/40 transition-colors border-b border-slate-100"
+                        onClick={() => setSelectedOrderModal(order)}
+                      >
+                        <TableCell>
+                          <div className="font-mono text-xs font-bold text-indigo-600">
+                            {order._id.slice(0, 12)}...
+                          </div>
+                        </TableCell>
+                        
+                        {isSuperAdmin && (
+                          <TableCell>
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-100 text-amber-900 rounded-md border border-amber-200">
+                                ID: {creatorId.slice(0, 10)}...
+                              </span>
+                              <div className="text-xs font-bold text-slate-800">{creatorName}</div>
+                              <div className="text-[10px] text-slate-500">{creatorEmail}</div>
+                            </div>
+                          </TableCell>
+                        )}
+
+                        <TableCell>
+                          <div className="text-xs font-bold text-slate-800">
+                            {(order.project as any)?.name || "Lanyard Project"}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="text-xs text-slate-600">
+                            {(order.project as any)?.organization || creatorOrg || "GoTek Org"}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="text-xs text-slate-600">
+                            {(order.template as any)?.name || "Lanyard"}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="text-xs font-extrabold text-indigo-600">
+                            {order.student_count || 100} Units
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          {getStatusBadge(order.status)}
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="text-xs text-slate-600">
+                            {formatDateLocal(order.createdAt)}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell onClick={e => e.stopPropagation()} className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-bold text-xs"
+                              onClick={() => setSelectedOrderModal(order)}
+                              title="View Full Lanyard Specifications"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" />
+                              View Specs
+                            </Button>
+                            
+                            <Select
+                              value={order.status}
+                              onValueChange={(newStatus) => handleStatusUpdate(order._id, newStatus)}
+                            >
+                              <SelectTrigger className="w-[130px] h-8 text-xs font-bold">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="submitted">Submitted</SelectItem>
+                                <SelectItem value="uploaded">Uploaded</SelectItem>
+                                <SelectItem value="validated">Validated</SelectItem>
+                                <SelectItem value="generated">Generated</SelectItem>
+                                <SelectItem value="exported">Exported</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -343,15 +523,109 @@ const OrderManagement = () => {
         {filteredOrders.length === 0 && (
           <Card className="mt-6">
             <CardContent className="p-8 text-center">
-              <div className="text-muted-foreground">
-                {searchTerm || statusFilter !== "all" 
+              <div className="text-muted-foreground text-sm">
+                {searchTerm || statusFilter !== "all" || adminFilter !== "all"
                   ? "No orders match your current filters." 
-                  : "No orders have been created yet."
+                  : "No orders have been created yet under this admin account."
                 }
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Order Details Specification Modal Popup */}
+        <LanyardOrderDetailsModal
+          isOpen={!!selectedOrderModal}
+          onClose={() => setSelectedOrderModal(null)}
+          order={selectedOrderModal}
+          onStatusUpdate={handleStatusUpdate}
+        />
+
+        {/* Create New Order Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-900">Create New Order</DialogTitle>
+              <DialogDescription className="text-slate-500">
+                Submit a new lanyard order for printing and manufacturing.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleCreateOrderSubmit} className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="projectName" className="font-bold text-slate-700">Project / School Name *</Label>
+                <Input
+                  id="projectName"
+                  placeholder="e.g. St. Xavier High School Lanyards"
+                  value={newOrderData.projectName}
+                  onChange={e => setNewOrderData({ ...newOrderData, projectName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="organization" className="font-bold text-slate-700">Organization Name</Label>
+                <Input
+                  id="organization"
+                  placeholder="e.g. GOTEK or School Name"
+                  value={newOrderData.organization}
+                  onChange={e => setNewOrderData({ ...newOrderData, organization: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="studentCount" className="font-bold text-slate-700">Quantity (Units)</Label>
+                  <Input
+                    id="studentCount"
+                    type="number"
+                    min="1"
+                    value={newOrderData.studentCount}
+                    onChange={e => setNewOrderData({ ...newOrderData, studentCount: Number(e.target.value) })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="orderStatus" className="font-bold text-slate-700">Initial Status</Label>
+                  <Select 
+                    value={newOrderData.status} 
+                    onValueChange={v => setNewOrderData({ ...newOrderData, status: v })}
+                  >
+                    <SelectTrigger id="orderStatus">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="uploaded">Uploaded</SelectItem>
+                      <SelectItem value="validated">Validated</SelectItem>
+                      <SelectItem value="generated">Generated</SelectItem>
+                      <SelectItem value="exported">Exported</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsCreateModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmittingNew}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                >
+                  {isSubmittingNew ? 'Creating...' : 'Create Order'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

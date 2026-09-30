@@ -1,4 +1,4 @@
-import { Search, LogOut, User as UserIcon, Bell } from 'lucide-react';
+import { Search, LogOut, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
@@ -79,8 +79,8 @@ const TopBar = ({ sidebarCollapsed }: TopBarProps) => {
 
     return (
         <header
-            className="fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-6 transition-all duration-200"
-            style={{ left: sidebarCollapsed ? 72 : 260 }}
+            className="fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-[60] flex items-center justify-between px-6 transition-all duration-300 ease-in-out"
+            style={{ left: sidebarCollapsed ? 0 : 260 }}
         >
             {/* Left side empty for spacing */}
             <div className="flex-1"></div>
@@ -183,13 +183,6 @@ const TopBar = ({ sidebarCollapsed }: TopBarProps) => {
                                     <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                                     <p className="text-xs text-gray-500">{user?.email}</p>
                                 </div>
-                                <button
-                                    onClick={() => { navigate('/settings'); setShowUserMenu(false); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                >
-                                    <UserIcon className="w-4 h-4" />
-                                    Profile & Settings
-                                </button>
                                 <button
                                     onClick={handleLogout}
                                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"

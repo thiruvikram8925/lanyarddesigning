@@ -1,14 +1,25 @@
-import { useState, Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect, Suspense } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useRequireAuth } from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 
 const DashboardLayout = () => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const location = useLocation();
     
     // Strict route guard: redirects to /login if no valid user session
     const { isLoading, user } = useRequireAuth('/');
+
+    // Automatically slide the dashboard/sidebar left upon entering the lanyard designer
+    useEffect(() => {
+        if (location.pathname === '/lanyard-designer') {
+            const timer = setTimeout(() => {
+                setSidebarCollapsed(true);
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [location.pathname]);
 
     // Block rendering entirely while auth is being validated.
     // This prevents the "Ghost User" / "Guest" UI from ever flashing.
@@ -24,12 +35,12 @@ const DashboardLayout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden">
             <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
             <TopBar sidebarCollapsed={sidebarCollapsed} />
             <main
-                className="pt-16 min-h-screen transition-all duration-200"
-                style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}
+                className="pt-16 min-h-screen transition-all duration-300 ease-in-out"
+                style={{ marginLeft: sidebarCollapsed ? 0 : 260 }}
             >
                 <div className="p-6">
                     <Suspense fallback={

@@ -1,12 +1,5 @@
 import { useConfiguratorStore } from '../../store/useConfiguratorStore';
-import { printingMethods, lanyardStyles, presetColors, gradientPresets } from '../../data/options';
-import { Printer, Scissors, Palette, ChevronRight } from 'lucide-react';
-
-const ICONS: Record<string, React.ReactNode> = {
-  'Screen Printed': <Printer size={16} className="text-slate-500" />,
-  'Woven': <Scissors size={16} className="text-slate-500" />,
-  'Sublimated': <Palette size={16} className="text-indigo-500" />,
-};
+import { presetColors, gradientPresets } from '../../data/options';
 
 export default function ElementsPanel() {
   const design = useConfiguratorStore(s => s.design);
@@ -18,67 +11,7 @@ export default function ElementsPanel() {
       <div className="px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-xs font-bold text-slate-500 tracking-wider uppercase">Elements</h3>
-          <span className="text-[10px] text-slate-400 font-medium">SETUP</span>
-        </div>
-      </div>
-
-      {/* Printing Method */}
-      <div className="px-4 mb-4">
-        <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Printing Method</h4>
-        <div className="space-y-2">
-          {printingMethods.map(m => {
-            const isActive = design.printingMethod === m.label;
-            return (
-              <button
-                key={m.label}
-                onClick={() => setField('printingMethod', m.label)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-                  isActive
-                    ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-200'
-                    : 'bg-white border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isActive ? 'bg-indigo-100' : 'bg-slate-100'}`}>
-                  {ICONS[m.label] || <Palette size={16} />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700">{m.label}</span>
-                    {m.price > 0 && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded">+${m.price}</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 truncate">{m.description}</p>
-                </div>
-                {isActive && <ChevronRight size={14} className="text-indigo-500" />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Lanyard Style */}
-      <div className="px-4 mb-4">
-        <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Lanyard Style</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {lanyardStyles.map(s => {
-            const isActive = design.lanyardStyle === s.label;
-            return (
-              <button
-                key={s.label}
-                onClick={() => setField('lanyardStyle', s.label)}
-                className={`flex flex-col items-center p-3 rounded-lg border transition-all ${
-                  isActive
-                    ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-200'
-                    : 'bg-white border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div className="text-2xl mb-1">{s.label === 'Single Ended' ? '🪝' : '🔗'}</div>
-                <span className="text-[11px] font-bold text-slate-700">{s.label}</span>
-                <span className="text-[9px] text-slate-400">{s.description.substring(0, 30)}...</span>
-              </button>
-            );
-          })}
+          <span className="text-[10px] text-slate-400 font-medium">COLORS & STYLES</span>
         </div>
       </div>
 

@@ -137,6 +137,18 @@ function StaticLogo({ cx, cy, angle, logo, strapW, logoScale, logoOffset, logoRo
   const targetH = strapW * 0.8 * scale;
   const targetW = targetH * imgRatio;
 
+  const borderWidth = (design.logoBorderWidth as number) || 0;
+  const borderColor = (design.logoBorderColor as string) || '#ffffff';
+  const borderRadius = (design.logoBorderRadius as number) || 0;
+  const opacity = (design.logoOpacity as number) ?? 1;
+
+  const cropConfig = (design.logoCropWidth && design.logoCropHeight) ? {
+    x: (design.logoCropX as number) || 0,
+    y: (design.logoCropY as number) || 0,
+    width: design.logoCropWidth as number,
+    height: design.logoCropHeight as number
+  } : undefined;
+
   return (
     <Group 
       x={cx} y={cy} rotation={angle}
@@ -164,12 +176,24 @@ function StaticLogo({ cx, cy, angle, logo, strapW, logoScale, logoOffset, logoRo
       onMouseEnter={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => { if (showControls) e.target.getStage()!.container().style.cursor = 'grab'; }}
       onMouseLeave={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => { e.target.getStage()!.container().style.cursor = 'default'; }}
     >
+      {borderWidth > 0 && (
+        <Rect
+          x={(logoOffset || 0)} y={0}
+          width={targetW + borderWidth * 2} height={targetH + borderWidth * 2}
+          offsetX={(targetW + borderWidth * 2) / 2} offsetY={(targetH + borderWidth * 2) / 2}
+          stroke={borderColor} strokeWidth={borderWidth} cornerRadius={borderRadius}
+          rotation={logoRotation || 0} opacity={opacity}
+        />
+      )}
       <Image 
         image={logo} 
         x={(logoOffset || 0)} y={0}
         width={targetW} height={targetH}
         offsetX={targetW / 2} offsetY={targetH / 2}
         rotation={logoRotation || 0}
+        opacity={opacity}
+        crop={cropConfig}
+        cornerRadius={borderRadius}
       />
       {showControls && (
         <Group x={logoOffset + targetW/2 + 10} y={-targetH/2}>
@@ -280,8 +304,108 @@ function DimLine({ x1, y1, x2, y2, label }: Record<string, unknown>) {
   );
 }
 
+function IndividualLanyardLogo({
+  logoItem,
+  x1, y1, dx, dy, dist, angle, strapW, showControls, onRemoveLogo, onUpdateLogoItem, design
+}: Record<string, unknown>) {
+  const logoImg = useCanvasImage(logoItem.url as string);
+  if (!logoImg) return null;
+
+  const itemScale = (logoItem.scale as number) || (design.logoScale as number) || 1;
+  const itemRotation = (logoItem.rotation as number) || (design.logoRotation as number) || 0;
+  const borderWidth = (logoItem.borderWidth as number) || (design.logoBorderWidth as number) || 0;
+  const borderColor = (logoItem.borderColor as string) || (design.logoBorderColor as string) || '#ffffff';
+  const borderRadius = (logoItem.borderRadius as number) || (design.logoBorderRadius as number) || 0;
+  const opacity = (logoItem.opacity as number) ?? (design.logoOpacity as number) ?? 1;
+
+  const imgRatio = logoImg.width / logoImg.height;
+  const lgW = (strapW as number) * 0.8 * imgRatio * itemScale;
+
+  const baseT = (logoItem.tRatio as number) ?? 0.5;
+  const rawT = baseT + ((logoItem.xOffset as number) || 0) / (dist as number);
+  const logoT = Math.min(0.98, Math.max(0.02, rawT));
+
+  const px = (x1 as number) + (dx as number) * logoT;
+  const py = (y1 as number) + (dy as number) * logoT;
+
+  return (
+    <Group
+      key={logoItem.id as string}
+      x={px}
+      y={py}
+      rotation={angle as number}
+      draggable={showControls as boolean}
+      onDragEnd={(e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => {
+        const node = e.target;
+        const dragX = node.x() - px;
+        const dragY = node.y() - py;
+        const ux = (dx as number) / (dist as number);
+        const uy = (dy as number) / (dist as number);
+        const projOffset = dragX * ux + dragY * uy;
+        (onUpdateLogoItem as Function)(logoItem.id, projOffset);
+        node.position({ x: px, y: py });
+      }}
+      onClick={(e: any) => {
+        e.cancelBubble = true;
+        useConfiguratorStore.getState().setField('selectedLanyardElement', 'logo');
+      }}
+      onTap={(e: any) => {
+        e.cancelBubble = true;
+        useConfiguratorStore.getState().setField('selectedLanyardElement', 'logo');
+      }}
+      onMouseEnter={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => {
+        if (showControls) e.target.getStage()!.container().style.cursor = 'grab';
+      }}
+      onMouseLeave={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => {
+        e.target.getStage()!.container().style.cursor = 'default';
+      }}
+    >
+      {borderWidth > 0 && (
+        <Rect
+          width={lgW + borderWidth * 2}
+          height={(strapW as number) * 0.8 * itemScale + borderWidth * 2}
+          offsetY={((strapW as number) * 0.8 * itemScale + borderWidth * 2) / 2}
+          offsetX={(lgW + borderWidth * 2) / 2}
+          stroke={borderColor}
+          strokeWidth={borderWidth}
+          cornerRadius={borderRadius}
+          rotation={itemRotation}
+          opacity={opacity}
+        />
+      )}
+      <Image
+        image={logoImg}
+        width={lgW}
+        height={(strapW as number) * 0.8 * itemScale}
+        offsetY={((strapW as number) * 0.8 * itemScale) / 2}
+        offsetX={lgW / 2}
+        rotation={itemRotation}
+        opacity={opacity}
+        cornerRadius={borderRadius}
+      />
+      {showControls && (
+        <Group
+          x={lgW / 2 + 6}
+          y={-((strapW as number) * 0.8 * itemScale) / 2}
+          onClick={(e: any) => {
+            e.cancelBubble = true;
+            (onRemoveLogo as Function)(logoItem.id);
+          }}
+          onTap={(e: any) => {
+            e.cancelBubble = true;
+            (onRemoveLogo as Function)(logoItem.id);
+          }}
+        >
+          <Circle radius={7} fill="#ef4444" cursor="pointer" />
+          <Text text="✕" x={-3.5} y={-4} fontSize={8} fill="#fff" fontStyle="bold" listening={false} />
+        </Group>
+      )}
+    </Group>
+  );
+}
+
 // ─── INDEPENDENT Content with Independent Drills ──────────────────────────
-function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoLogo, forceNoText, onUpdateText, onUpdateLogo, onRemoveText, onRemoveLogo, showControls, zone }: Record<string, unknown>) {
+function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoLogo, forceNoText, onUpdateText, onUpdateLogo, onUpdateLogoItem, onRemoveText, onRemoveLogo, showControls, zone }: Record<string, unknown>) {
   const { lanyardDesignStyle, customText, customTextSecondary, predefinedWord, fontColor, fontFamily, fontSize, textSpacing, logoScale, logoRotation, textOffset, logoOffset, copyMode, customTextLeft, customTextCenter, customTextRight } = design;
   
   const dx = x2 - x1, dy = y2 - y1;
@@ -302,26 +426,101 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
   const textW = mainText ? mainText.length * fs * 0.55 : 0;
   const lgW = hasLogo ? (strapW * 0.8 * (logoImg.width / logoImg.height) * logoScale) : 0;
   
-  const gap = Math.max(30, (textSpacing || 60) * 2 + textW + lgW);
-  const count = Math.max(0, Math.floor(dist / gap));
-  if (count === 0 && !hasLogo) return null;
+  const logoSpacing = (design.logoSpacing as number) || 40;
+  const isLogoRepeated = (design.logoMode !== 'single') && (lanyardDesignStyle === 'repeated' || design.logoRepeat !== false);
+  
+  const stepGap = Math.max(30, logoSpacing + lgW + (mainText ? textW + 15 : 0));
 
   const items = [];
-  for (let i = 0; i < count; i++) {
-    const baseT = (gap * i) / dist;
-    const textT = baseT + (tOffset) / dist;
-    const logoT = baseT + (lOffset) / dist + (textW + 15) / dist;
+  const customLogos = (design.lanyardLogos as Array<any>) || [];
 
-    if (zone === 'center') {
-       if (textT >= 0 && textT <= 1) {
-         if (mainText) items.push({ type: 'text', t: textT, i });
-       }
-       if (logoT >= 0 && logoT <= 1) {
-         if (hasLogo) items.push({ type: 'logo', t: logoT, i });
-       }
-    } else {
-      if (mainText) items.push({ type: 'text', t: textT, i });
-      if (hasLogo) items.push({ type: 'logo', t: logoT, i });
+  if (customLogos.length > 0 && !forceNoLogo) {
+    // Filter custom logos by zone to prevent auto-duplicating logos across left, center, and right zones
+    const zoneLogos = customLogos.filter((logoItem: any) => {
+      if (logoItem.zone) return logoItem.zone === zone;
+      return zone === 'left';
+    });
+
+    return (
+      <Group>
+        {/* Render text items if present */}
+        {mainText && (
+          <Group>
+            {Array.from({ length: Math.max(1, Math.floor(dist / Math.max(30, (textSpacing || 60) * 2 + textW))) }).map((_, i) => {
+              const textT = (Math.max(30, (textSpacing || 60) * 2 + textW) * i + (tOffset || 0)) / dist;
+              if (textT < -0.1 || textT > 1.1) return null;
+              const px = x1 + dx * textT;
+              const py = y1 + dy * textT;
+              const totalHeight = hasSubText ? fs + fs * 0.55 : fs;
+              return (
+                <Group
+                  key={`text-${i}`}
+                  x={px}
+                  y={py}
+                  rotation={angle + (design.textAngle || 0)}
+                  draggable={showControls}
+                  onClick={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'text'); }}
+                  onTap={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'text'); }}
+                  onDragEnd={(e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => {
+                    const node = e.target;
+                    const dragX = node.x() - px;
+                    const dragY = node.y() - py;
+                    const ux = dx / dist;
+                    const uy = dy / dist;
+                    const projOffset = dragX * ux + dragY * uy;
+                    onUpdateText(projOffset, zone);
+                    node.position({ x: px, y: py });
+                  }}
+                >
+                  <Text
+                    text={mainText}
+                    fontSize={fs}
+                    fontFamily={fontFamily}
+                    fontStyle="bold"
+                    fill={fontColor}
+                    align={design.textPosition === 'Left' ? 'left' : (design.textPosition === 'Right' ? 'right' : 'center')}
+                    width={textW}
+                    offsetX={design.textPosition === 'Left' ? 0 : (design.textPosition === 'Right' ? textW : textW / 2)}
+                    offsetY={totalHeight / 2}
+                  />
+                  {showControls && i === 0 && (
+                    <Group x={(design.textPosition === 'Left' ? textW : (design.textPosition === 'Right' ? 0 : textW / 2)) + 8} y={-fs / 2}>
+                      <Circle radius={6} fill="#ef4444" onClick={() => onRemoveText(zone)} cursor="pointer" />
+                      <Text text="✕" x={-3} y={-3.5} fontSize={7} fill="#fff" fontStyle="bold" listening={false} />
+                    </Group>
+                  )}
+                </Group>
+              );
+            })}
+          </Group>
+        )}
+
+        {/* Render distinct added images without repeating across zones */}
+        {zoneLogos.map((logoItem: any) => (
+          <IndividualLanyardLogo
+            key={logoItem.id}
+            logoItem={logoItem}
+            x1={x1} y1={y1} dx={dx} dy={dy} dist={dist} angle={angle}
+            strapW={strapW} showControls={showControls}
+            onRemoveLogo={onRemoveLogo}
+            onUpdateLogoItem={onUpdateLogoItem}
+            design={design}
+            zone={zone}
+          />
+        ))}
+      </Group>
+    );
+  }
+
+  if (mainText) {
+    const textGap = Math.max(30, (textSpacing || 60) * 2 + textW + (hasLogo ? lgW : 0));
+    const count = Math.max(1, Math.floor(dist / textGap));
+    for (let i = 0; i < count; i++) {
+      const baseT = (textGap * i) / dist;
+      const textT = baseT + (tOffset / dist);
+      if (textT >= -0.1 && textT <= 1.1) {
+        items.push({ type: 'text', t: textT, i });
+      }
     }
   }
 
@@ -329,7 +528,6 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
     <Group>
       {items.map((item, idx) => {
         const px = x1 + dx * item.t, py = y1 + dy * item.t;
-        if (item.t < -0.1 || item.t > 1.1) return null;
 
         if (item.type === 'text') {
           const totalHeight = hasSubText ? fs + fs * 0.55 : fs;
@@ -343,15 +541,14 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
                   onClick={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'text'); }}
                   onTap={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'text'); }}
                   onDragEnd={(e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => {
-                    if (design.snapToGrid) {
-                      const node = e.target;
-                      const newX = Math.round(node.x() / (design.gridSize || 20)) * (design.gridSize || 20);
-                      const newY = Math.round(node.y() / (design.gridSize || 20)) * (design.gridSize || 20);
-                      node.position({ x: newX, y: newY });
-                      onUpdateText(newX - px, newY - py, zone);
-                    } else {
-                      onUpdateText(e.target.x() - px, e.target.y() - py, zone);
-                    }
+                    const node = e.target;
+                    const dragX = node.x() - px;
+                    const dragY = node.y() - py;
+                    const ux = dx / dist;
+                    const uy = dy / dist;
+                    const projOffset = dragX * ux + dragY * uy;
+                    onUpdateText(projOffset, zone);
+                    node.position({ x: px, y: py });
                   }}
                   onTransformEnd={(e: import('konva/lib/Node').KonvaEventObject<Event>) => {
                     const node = e.target;
@@ -416,16 +613,61 @@ function UnifiedStrapContent({ x1, y1, x2, y2, design, logoImg, strapW, forceNoL
               );
             }
 
+        const borderWidth = (design.logoBorderWidth as number) || 0;
+        const borderColor = (design.logoBorderColor as string) || '#ffffff';
+        const borderRadius = (design.logoBorderRadius as number) || 0;
+        const opacity = (design.logoOpacity as number) ?? 1;
+
+        const cropConfig = (design.logoCropWidth && design.logoCropHeight) ? {
+          x: (design.logoCropX as number) || 0,
+          y: (design.logoCropY as number) || 0,
+          width: design.logoCropWidth as number,
+          height: design.logoCropHeight as number
+        } : undefined;
+
         return (
           <Group 
             key={`${item.type}-${item.i}`} x={px} y={py} rotation={angle}
-            draggable={showControls as boolean} onDragMove={(e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => (onUpdateLogo as Function)(e.target.x() - px, e.target.y() - py, zone)}
+            draggable={showControls as boolean}
+            onDragEnd={(e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => {
+              const node = e.target;
+              const dragX = node.x() - px;
+              const dragY = node.y() - py;
+              const ux = dx / dist;
+              const uy = dy / dist;
+              const projOffset = dragX * ux + dragY * uy;
+              (onUpdateLogo as Function)(projOffset, zone);
+              node.position({ x: px, y: py });
+            }}
             onClick={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'logo'); }}
             onTap={(e: any) => { e.cancelBubble = true; useConfiguratorStore.getState().setField('selectedLanyardElement', 'logo'); }}
             onMouseEnter={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => { if (showControls) e.target.getStage()!.container().style.cursor = 'grab'; }}
             onMouseLeave={(e: import('konva/lib/Node').KonvaEventObject<MouseEvent>) => { e.target.getStage()!.container().style.cursor = 'default'; }}
           >
-            <Image image={logoImg} width={lgW} height={strapW*0.8*logoScale} offsetY={(strapW*0.8*logoScale)/2} offsetX={lgW/2} rotation={logoRotation || 0} />
+            {borderWidth > 0 && (
+              <Rect
+                width={lgW + borderWidth * 2}
+                height={strapW * 0.8 * logoScale + borderWidth * 2}
+                offsetY={(strapW * 0.8 * logoScale + borderWidth * 2) / 2}
+                offsetX={(lgW + borderWidth * 2) / 2}
+                stroke={borderColor}
+                strokeWidth={borderWidth}
+                cornerRadius={borderRadius}
+                rotation={logoRotation || 0}
+                opacity={opacity}
+              />
+            )}
+            <Image
+              image={logoImg}
+              width={lgW}
+              height={strapW * 0.8 * logoScale}
+              offsetY={(strapW * 0.8 * logoScale) / 2}
+              offsetX={lgW / 2}
+              rotation={logoRotation || 0}
+              opacity={opacity}
+              crop={cropConfig}
+              cornerRadius={borderRadius}
+            />
             {showControls && item.i === 0 && (
               <Group x={lgW/2 + 8} y={-(strapW*0.8*logoScale)/2}>
                  <Circle radius={6} fill="#ef4444" onClick={() => onRemoveLogo(zone)} cursor="pointer" />
@@ -504,8 +746,34 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
       setField(fieldPath, '');
     }
   };
-  const onRemoveLogo = () => {
-    setField('logoUrl', '');
+  const onRemoveLogo = (logoId?: string) => {
+    if (typeof logoId === 'string' && logoId) {
+      const currentLogos = (design.lanyardLogos as Array<any>) || [];
+      const updated = currentLogos.filter(l => l.id !== logoId);
+      setField('lanyardLogos', updated);
+      if (updated.length === 0) {
+        setField('logoUrl', '');
+        setField('logoName', '');
+      } else {
+        setField('logoUrl', updated[0].url);
+        setField('logoName', updated[0].name);
+      }
+    } else {
+      setField('logoUrl', '');
+      setField('logoName', '');
+      setField('lanyardLogos', []);
+    }
+  };
+
+  const onUpdateLogoItem = (logoId: string, deltaOffset: number) => {
+    const currentLogos = (design.lanyardLogos as Array<any>) || [];
+    const updated = currentLogos.map(l => {
+      if (l.id === logoId) {
+        return { ...l, xOffset: ((l.xOffset as number) || 0) + deltaOffset };
+      }
+      return l;
+    });
+    setField('lanyardLogos', updated);
   };
 
   const [stageScale, setStageScale] = useState(scale);
@@ -531,9 +799,11 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
       y: (pointer.y - stagePos.y) / oldScale,
     };
 
-    const scaleBy = 1.1;
-    let newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    newScale = Math.max(0.3, Math.min(newScale, 6));
+    // Reduced zoom sensitivity (2.5% step factor for flat mode)
+    const stepFactor = isFlatMode ? 0.025 : 0.05;
+    const direction = e.evt.deltaY < 0 ? 1 : -1;
+    let newScale = oldScale * (1 + direction * stepFactor);
+    newScale = Math.max(0.5, Math.min(newScale, 3.5));
 
     const newPos = {
       x: pointer.x - mousePointTo.x * newScale,
@@ -609,15 +879,45 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
   };
 
   if (isFlatMode) {
-    const fw = containerWidth || 800;
-    const fh = containerHeight || 480;
-    const h = 420;
-    const frontX = fw/2 - strapW - 40;
-    const backX = fw/2 + 40;
-    const strapY = (fh - h) / 2;
+    const fw = containerWidth || 980;
+    const fh = containerHeight || 560;
     
+    const mmStr = (design.width as string) || '20mm';
+    const finishMm = parseInt(mmStr.replace('mm', ''), 10) || 20;
+    const bleedMm = parseFloat((finishMm * 1.155).toFixed(1)); // 23.1 mm for 20mm finish
+
+    // Responsive 38-inch horizontal strip layout (Zoomed & Centered)
+    const STRAP_LEN = Math.min(800, Math.max(600, fw - 160));
+    const startX = (fw - STRAP_LEN) / 2 + 40; // Shift right to make room for badges on left
+
+    // 38 inches total breakdown (2" left ext, 14" left side, 4" neck, 14" right side, 4" right ext)
+    const x0 = startX;
+    const x1 = startX + STRAP_LEN * (2 / 38);   // End of 2" Left Extension
+    const x2 = x1 + STRAP_LEN * (14 / 38);      // End of 14" Left Side Area / Start of Neck Area
+    const x3 = x2 + STRAP_LEN * (4 / 38);       // End of 4" Neck Area / Start of Right Side Area
+    const x4 = x3 + STRAP_LEN * (14 / 38);      // End of 14" Right Side Area / Start of 4" Right Extension
+    const x5 = x4 + STRAP_LEN * (4 / 38);       // End of 4" Right Extension
+
+    const finishH = Math.max(34, Math.min(52, (finishMm / 20) * 42)); // High-detail enlarged strap height
+    const bleedH = finishH * (bleedMm / finishMm); // 23.1mm bleed scale height
+    
+    const stripGap = 80; // Spacious gap between Front and Back strips
+    const frontStrapY = fh / 2 - finishH - stripGap / 2 + 10;
+    const backStrapY = fh / 2 + stripGap / 2 + 10;
+
+    const frontBleedY = frontStrapY - (bleedH - finishH) / 2;
+    const backBleedY = backStrapY - (bleedH - finishH) / 2;
+
+    const dimensions = [
+      { x: x0, w: x1 - x0, label: '2mm' },
+      { x: x1, w: x2 - x1, label: 'left part' },
+      { x: x2, w: x3 - x2, label: 'center' },
+      { x: x3, w: x4 - x3, label: 'right part' },
+      { x: x4, w: x5 - x4, label: '4mm' }
+    ];
+
     return (
-      <div className="w-full h-full flex justify-center items-center bg-transparent" ref={containerRef}>
+      <div className="w-full h-full flex justify-center items-center bg-white overflow-hidden" ref={containerRef}>
         <Stage 
           width={fw} 
           height={fh} 
@@ -625,7 +925,7 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
           scaleY={stageScale} 
           x={stagePos.x} 
           y={stagePos.y} 
-          className="bg-transparent" 
+          className="bg-white" 
           onClick={onSelect} 
           onTap={onSelect}
           onWheel={handleWheel}
@@ -636,18 +936,148 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
           onDragEnd={handleDragEnd}
         >
           <Layer ref={layerRef}>
-            <Group x={frontX} y={strapY}>
-              <FlatStrap x={0} y={0} w={strapW} h={h} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
-                 <UnifiedStrapContent x1={strapW/2} y1={20} x2={strapW/2} y2={h-20} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" />
-              </FlatStrap>
+            {/* Clean White Studio Canvas Background */}
+            <Rect x={0} y={0} width={fw} height={fh} fill="#ffffff" />
+
+            {/* FRONT SIDE BADGE / LABEL (Positioned cleanly above dimension marks) */}
+            <Group x={x0} y={frontStrapY - 38}>
+              <Rect x={0} y={0} width={75} height={18} fill="#4f46e5" cornerRadius={4} />
+              <Text text="FRONT SIDE" x={0} y={4.5} width={75} align="center" fontSize={9} fill="#ffffff" fontStyle="bold" />
             </Group>
-            
-            <Group x={backX} y={strapY}>
-              <FlatStrap x={0} y={0} w={strapW} h={h} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
-                 <UnifiedStrapContent x1={strapW/2} y1={h-20} x2={strapW/2} y2={20} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" />
-              </FlatStrap>
+
+            {/* BACK SIDE BADGE / LABEL (Positioned cleanly below back strip dimension marks) */}
+            <Group x={x0} y={backStrapY + finishH + 32}>
+              <Rect x={0} y={0} width={75} height={18} fill="#64748b" cornerRadius={4} />
+              <Text text="BACK SIDE" x={0} y={4.5} width={75} align="center" fontSize={9} fill="#ffffff" fontStyle="bold" />
             </Group>
-            
+
+            {/* TOP OUTER DIMENSION MARKS (ABOVE FRONT STRIP) */}
+            <Group y={frontBleedY - 18}>
+              {dimensions.map((dim, i) => (
+                <Group key={`dim-top-${i}`} x={dim.x}>
+                  <Line points={[0, 10, 0, 5, dim.w, 5, dim.w, 10]} stroke="#94a3b8" strokeWidth={1.5} />
+                  <Text text={dim.label} x={0} y={-7} width={dim.w} align="center" fontSize={11} fill="#64748b" fontStyle="bold" />
+                </Group>
+              ))}
+            </Group>
+
+            {/* BOTTOM OUTER DIMENSION MARKS (BELOW BACK STRIP) */}
+            <Group y={backBleedY + bleedH + 8}>
+              {dimensions.map((dim, i) => (
+                <Group key={`dim-bot-${i}`} x={dim.x}>
+                  <Line points={[0, 0, 0, 5, dim.w, 5, dim.w, 0]} stroke="#94a3b8" strokeWidth={1.5} />
+                  <Text text={dim.label} x={0} y={10} width={dim.w} align="center" fontSize={11} fill="#64748b" fontStyle="bold" />
+                </Group>
+              ))}
+            </Group>
+
+            {/* FRONT BLEED OUTLINE (23.1 mm) */}
+            {design.showBleed !== false && (
+              <Rect 
+                x={x0} 
+                y={frontBleedY} 
+                width={STRAP_LEN} 
+                height={bleedH} 
+                stroke="rgba(239, 68, 68, 0.45)" 
+                strokeWidth={1.2} 
+                dash={[5, 4]} 
+              />
+            )}
+
+            {/* BACK BLEED OUTLINE (23.1 mm) */}
+            {design.showBleed !== false && (
+              <Rect 
+                x={x0} 
+                y={backBleedY} 
+                width={STRAP_LEN} 
+                height={bleedH} 
+                stroke="rgba(239, 68, 68, 0.45)" 
+                strokeWidth={1.2} 
+                dash={[5, 4]} 
+              />
+            )}
+
+            {/* ==================== FRONT SIDE STRIP ==================== */}
+            <FlatStrap x={x0} y={frontStrapY} w={STRAP_LEN} h={finishH} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
+              {/* Left Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x1 + 6 - x0} y1={finishH / 2} x2={x2 - 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" 
+              />
+
+              {/* Center Neck Area */}
+              {design.lanyardDesignStyle === 'central-logo' ? (
+                <StaticLogo 
+                  cx={(x2 + x3) / 2 - x0} cy={finishH / 2} angle={0} logo={logoImg} strapW={finishH} 
+                  logoScale={design.logoScale} logoOffset={design.copyMode === 'synchronized' ? design.logoOffset : design.logoOffsetCenter} 
+                  logoRotation={design.logoRotation} onRemove={onRemoveLogo} onDrag={onUpdateLogo} showControls={showControls} design={design} 
+                />
+              ) : (
+                <UnifiedStrapContent 
+                  x1={x2 + 6 - x0} y1={finishH / 2} x2={x3 - 6 - x0} y2={finishH / 2} 
+                  design={design} logoImg={logoImg} strapW={finishH} 
+                  onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                  onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="center" 
+                />
+              )}
+
+              {/* Right Side Design Area (Rotated 180°) */}
+              <UnifiedStrapContent 
+                x1={x4 - 6 - x0} y1={finishH / 2} x2={x3 + 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" 
+              />
+            </FlatStrap>
+
+            {/* ==================== BACK SIDE STRIP ==================== */}
+            <FlatStrap x={x0} y={backStrapY} w={STRAP_LEN} h={finishH} color={strapColor} pattern={activePattern} patternOpacity={patternOpacity}>
+              {/* Back Left Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x2 - 6 - x0} y1={finishH / 2} x2={x1 + 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-left" 
+              />
+
+              {/* Back Center Neck Area */}
+              {design.lanyardDesignStyle === 'central-logo' ? (
+                <StaticLogo 
+                  cx={(x2 + x3) / 2 - x0} cy={finishH / 2} angle={180} logo={logoImg} strapW={finishH} 
+                  logoScale={design.logoScale} logoOffset={design.copyMode === 'synchronized' ? design.logoOffset : design.logoOffsetCenter} 
+                  logoRotation={design.logoRotation} onRemove={onRemoveLogo} onDrag={onUpdateLogo} showControls={showControls} design={design} 
+                />
+              ) : (
+                <UnifiedStrapContent 
+                  x1={x3 - 6 - x0} y1={finishH / 2} x2={x2 + 6 - x0} y2={finishH / 2} 
+                  design={design} logoImg={logoImg} strapW={finishH} 
+                  onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                  onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-center" 
+                />
+              )}
+
+              {/* Back Right Side Design Area */}
+              <UnifiedStrapContent 
+                x1={x3 + 6 - x0} y1={finishH / 2} x2={x4 - 6 - x0} y2={finishH / 2} 
+                design={design} logoImg={logoImg} strapW={finishH} 
+                onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem}
+                onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="back-right" 
+              />
+            </FlatStrap>
+
+            {/* Subtle Vertical Section Alignment Lines Across Both Straps */}
+            {[x1, x2, x3, x4].map((x, i) => (
+              <Line 
+                key={`section-guide-${i}`} 
+                points={[x, frontBleedY - 4, x, backBleedY + bleedH + 4]} 
+                stroke="rgba(148, 163, 184, 0.35)" 
+                strokeWidth={1} 
+                dash={[3, 3]} 
+              />
+            ))}
+
             <Transformer ref={trRef} boundBoxFunc={(oldB, newB) => (newB.width < 5 || newB.height < 5) ? oldB : newB} />
           </Layer>
         </Stage>
@@ -702,17 +1132,17 @@ export default function LanyardStage({ zoom = 1, stageRef, currentStep, showIdCa
           <DimLine x1={LX - 25} y1={TOP_Y} x2={LX - 25} y2={TOP_Y + strapW} label={design.width || '20mm'} />
           <Group>
             <ProStrap points={rightStrap} color={strapColor} strapW={strapW} pattern={activePattern} patternOpacity={patternOpacity} />
-            <UnifiedStrapContent {...rightCL} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" />
+            <UnifiedStrapContent {...rightCL} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="right" />
 
             <ProStrap points={barPts} color={strapColor} strapW={strapW} pattern={activePattern} patternOpacity={patternOpacity} />
             {design.lanyardDesignStyle === 'central-logo' ? (
               <StaticLogo cx={CX} cy={TOP_Y + strapW/2} angle={0} logo={logoImg} strapW={strapW} logoScale={design.logoScale} logoOffset={design.copyMode === 'synchronized' ? design.logoOffset : design.logoOffsetCenter} logoRotation={design.logoRotation} onRemove={onRemoveLogo} onDrag={onUpdateLogo} showControls={showControls} design={design} />
             ) : (
-              <UnifiedStrapContent x1={LX+strapW+10} y1={TOP_Y+strapW/2} x2={RX-strapW-10} y2={TOP_Y+strapW/2} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="center" />
+              <UnifiedStrapContent x1={LX+strapW+10} y1={TOP_Y+strapW/2} x2={RX-strapW-10} y2={TOP_Y+strapW/2} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="center" />
             )}
 
             <ProStrap points={leftStrap} color={strapColor} strapW={strapW} pattern={activePattern} patternOpacity={patternOpacity} />
-            <UnifiedStrapContent {...leftCL} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" />
+            <UnifiedStrapContent {...leftCL} design={design} logoImg={logoImg} strapW={strapW} onUpdateText={onUpdateText} onUpdateLogo={onUpdateLogo} onUpdateLogoItem={onUpdateLogoItem} onRemoveText={onRemoveText} onRemoveLogo={onRemoveLogo} showControls={showControls} zone="left" />
 
             <CornerFold side="left" ox={LX} oy={TOP_Y} strapW={strapW} color={strapColor} />
             <CornerFold side="right" ox={RX} oy={TOP_Y} strapW={strapW} color={strapColor} />
