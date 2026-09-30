@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ribbon, FolderOpen, FileSpreadsheet, LayoutDashboard, CheckCircle, Palette, Settings } from 'lucide-react';
+import { Ribbon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -19,23 +19,7 @@ const navigation: NavGroup[] = [
     {
         title: 'MAIN',
         items: [
-            { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ALL_ROLES },
-            { label: 'Projects', icon: FolderOpen, path: '/projects', allowedRoles: ALL_ROLES },
-            { label: 'Records', icon: FileSpreadsheet, path: '/records', allowedRoles: ALL_ROLES },
-        ]
-    },
-    {
-        title: 'TOOLS & LIBRARY',
-        items: [
-            { label: 'Template Library', icon: LayoutDashboard, path: '/templates', allowedRoles: ALL_ROLES },
-            { label: 'Cropping Hub', icon: CheckCircle, path: '/validation', allowedRoles: ALL_ROLES },
-            { label: 'ID Customizer', icon: Palette, path: '/customizer', allowedRoles: ALL_ROLES },
-        ]
-    },
-    {
-        title: 'SYSTEM',
-        items: [
-            { label: 'Settings', icon: Settings, path: '/settings', allowedRoles: ALL_ROLES },
+            { label: 'Lanyard Designer', icon: Ribbon, path: '/lanyard-designer', allowedRoles: ALL_ROLES }
         ]
     }
 ];
