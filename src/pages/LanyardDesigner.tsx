@@ -5,7 +5,7 @@ import {
   ZoomIn, ZoomOut, RotateCcw, Cloud, Loader2,
   Layers, History, MonitorSmartphone, Settings2, FolderHeart,
   AlignLeft, AlignCenter, AlignRight, FlipHorizontal, Repeat, MoveHorizontal, Baseline, Image, Maximize, GitCommit,
-  Crop, Trash2
+  Crop, Trash2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -257,10 +257,14 @@ export default function LanyardDesigner() {
           })}
         </div>
 
-        {/* Left Panel */}
-        {leftPanelOpen && (
-          <div className="w-[270px] shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
-            {leftTab === 'elements' && <ElementsPanel />}
+        {/* Left Sliding Panel */}
+        <div
+          className={`shrink-0 bg-white border-r border-slate-200 flex flex-col transition-[width] duration-300 ease-in-out relative ${
+            leftPanelOpen ? 'w-[270px]' : 'w-0 border-r-0'
+          } overflow-hidden z-10`}
+        >
+          <div className="w-[270px] h-full flex flex-col overflow-y-auto">
+            {leftTab === 'elements' && <ElementsPanel onClose={() => setLeftPanelOpen(false)} />}
             {leftTab === 'text' && <TextPanel />}
             {leftTab === 'upload' && (
               <UploadPanel
@@ -285,7 +289,29 @@ export default function LanyardDesigner() {
             {leftTab === 'templates' && <TemplatesPanel />}
             {leftTab === 'saved-lanyards' && <SavedLanyardsPanel />}
           </div>
-        )}
+        </div>
+
+        {/* Small Left Side Sliding Bar (Edge Toggle) */}
+        <div className="relative z-30 flex items-center select-none w-0">
+          <button
+            onClick={() => {
+              if (!leftPanelOpen && !leftTab) {
+                setLeftTab('elements');
+              }
+              setLeftPanelOpen(!leftPanelOpen);
+            }}
+            className="absolute top-1/2 -translate-y-1/2 -left-px w-5 h-16 bg-white hover:bg-indigo-50 border border-slate-300 hover:border-indigo-400 rounded-r-lg shadow-md flex flex-col items-center justify-center gap-1.5 text-slate-500 hover:text-indigo-600 transition-all cursor-pointer group focus:outline-none"
+            title={leftPanelOpen ? "Close panel to view screen" : "Open colour panel"}
+            aria-label={leftPanelOpen ? "Close panel to view screen" : "Open colour panel"}
+          >
+            {leftPanelOpen ? (
+              <ChevronLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+            ) : (
+              <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            )}
+            <div className="w-0.5 h-3 bg-slate-300 rounded-full group-hover:bg-indigo-500 transition-colors" />
+          </button>
+        </div>
 
         {/* Center Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden bg-slate-100 relative">

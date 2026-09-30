@@ -1,17 +1,34 @@
 import { useConfiguratorStore } from '../../store/useConfiguratorStore';
 import { presetColors, gradientPresets } from '../../data/options';
+import { ChevronLeft } from 'lucide-react';
 
-export default function ElementsPanel() {
+interface ElementsPanelProps {
+  onClose?: () => void;
+}
+
+export default function ElementsPanel({ onClose }: ElementsPanelProps) {
   const design = useConfiguratorStore(s => s.design);
   const setField = useConfiguratorStore(s => s.setField);
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 border-b border-slate-100">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-xs font-bold text-slate-500 tracking-wider uppercase">Elements</h3>
-          <span className="text-[10px] text-slate-400 font-medium">COLORS & STYLES</span>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-bold text-slate-700 tracking-wider uppercase">Elements</h3>
+            <span className="text-[10px] text-slate-400 font-medium">• COLORS & STYLES</span>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+              title="Close colour panel to view screen"
+              aria-label="Close colour panel"
+            >
+              <ChevronLeft size={15} />
+            </button>
+          )}
         </div>
       </div>
 
